@@ -1,14 +1,12 @@
 # IsoLamp: isoform identification and quantification from long-read amplicon sequencing data
 
-LOGO.
-
 [![Install](https://img.shields.io/badge/Install-Github-brightgreen)](#installation)
 [![Generic badge](https://img.shields.io/badge/Language-Bash-<COLOR>.svg)](https://shields.io/)
 [![Generic badge](https://img.shields.io/badge/Publication-01.xx-<COLOR>.svg)](https://shields.io/)
 
 **IsoLamp is a bash pipeline for the identification of known and novel isoforms from targeted amplicon long-read sequencing data generated with Oxford Nanopore Technologies.**
 
-PIPELINE.
+<img src="https://github.com/josiegleeson/IsoLamp/assets/30969357/fc17b986-5ad2-4e54-a711-358d3f2893cf" width="280" height="125">
 
 ## Contents
 
