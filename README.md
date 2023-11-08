@@ -26,9 +26,10 @@ Download the pipeline with Git:
 git clone https://github.com/josiegleeson/IsoLamp.git
 ```
 
-Create a conda environment with required dependencies:
+Make the script executable and create a conda environment with required dependencies:
 ```
 cd IsoLamp
+chmod +x IsoLamp
 conda env create -f IsoLamp_env.yml
 conda activate IsoLamp
 ```
