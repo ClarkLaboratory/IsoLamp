@@ -262,12 +262,12 @@ function get_JWRs() {
 		
 		if [ -z "$junction_window" ]
 		then
-    		junction_window=25 # set to the default value if empty
+    		junction_window=15 # set to the default value if empty
   		fi
 
 		if [ -z "$JAQ" ]
 		then
-    		JAQ=0.8 # set to the default value if empty
+    		JAQ=0.9 # set to the default value if empty
   		fi
 		
 		python3 $SCRIPT_DIR/scripts/NanoSplicer_JWR_checker.py --window $junction_window $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_JAQ.csv
