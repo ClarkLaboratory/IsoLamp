@@ -25,13 +25,14 @@ PIPELINE.
 ## Installation
 Download the pipeline with Git:
 ```
-git clone https://github.com/youyupei/discoAnt.git
+git clone https://github.com/josiegleeson/IsoLamp.git
 ```
 
-Run the setup script:
+Create a conda environment with required dependencies:
 ```
 cd IsoLamp
-bash scripts/IsoLamp_setup
+conda env create -f IsoLamp_env.yml
+conda activate IsoLamp
 ```
 **Note:** depending on your operating system you may need to edit the setup script to either 'conda activate' or 'source activate'.
 
