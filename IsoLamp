@@ -96,8 +96,7 @@ function filter_reference_files() {
 }
 
 function check_for_fastq_or_fasta_files() {
-	# exit if a directory contains empty fasta?
-
+	
 	if [ -d "$READS" ] 
 	then
         # use find to search for FASTQ or FASTA files
@@ -195,6 +194,8 @@ function downsampling_function() {
 		
 		redirect_output downsample_for_loop
 
+		# if statement for downsampling failing
+		
 		# set path to downsampled reads
 		path_to_reads=$OUTPUT_NAME/downsampled_reads
 
@@ -327,7 +328,7 @@ function run_bambu_function() {
 function read_count_function_first_pass() {
 	if [ -z "$read_count_minimum" ]
 	then
-    	read_count_minimum="5" # set to the default value if empty
+    	read_count_minimum=5 # set to the default value if empty
   	fi
 	
 	# filter for bambu isoforms with read count > threshold 
@@ -541,21 +542,6 @@ function gffcomp_function() {
 
 }
 
-function sqanti_function() {
- 	# source python paths for cDNA Cupcake to run with SQANTI
-  	export PYTHONPATH="$SCRIPT_DIR/scripts/cDNA_Cupcake/sequence/:$PYTHONPATH"
-  	export PYTHONPATH="$SCRIPT_DIR/scripts/cDNA_Cupcake/:$PYTHONPATH"
-  
-		
-	python $SCRIPT_DIR/scripts/SQANTI3/sqanti3_qc.py \
-		$OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf \
-		$ANNOTATION_FILT $GENOME_FILT \
-		-d $OUTPUT_NAME/sqanti -o $OUTPUT_NAME/annotated_isoforms --report skip
-		#--CAGE_peak $REF_HG38/refTSS_v3.3_human_coordinate.hg38.bed \
-		#--polyA_peak $REF_HG38/atlas.clusters.2.0.GRCh38.96.bed --polyA_motif_list $REF_HG38/human.polyA.list.txt
-
-}
-
 function plot_PCA() {
 
 	if [ -z "$grouping_data" ] 
@@ -683,9 +669,6 @@ compare_proportions_test
 echo "Annotating isoforms..."
 # run with gffcompare
 gffcomp_function
-
-# run with SQANTI
-#sqanti_function
 
 
 ########## 4. Report ##########
