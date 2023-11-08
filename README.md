@@ -179,8 +179,8 @@ Detailed descriptions of parameters:
 |forward_primers|optional|NULL|BED file of forward primers. Only checked if primer_site_based_filter is TRUE.|
 |reverse_primers|optional|NULL|BED file of reverse primers. Only checked if primer_site_based_filter is TRUE.|
 |extract_high_quality_SJs|optional|FALSE|Whether to extract reads with high quality splice junctions, and run Bambu on these reads. We recommend using this option to increase accuracy in calling novel isoforms.|
-|JAQ|optional|0.8|The minimum junction alignment quality every junction must meet in order for a read to be included. Only checked if extract_high_quality_SJs is TRUE.|
-|junction_window|optional|25|The nt distance upstream and downstream of splice junctions to calculate the JAQ. Only checked if extract_high_quality_SJs is TRUE.|
+|JAQ|optional|0.9|The minimum junction alignment quality every junction must meet in order for a read to be included. Only checked if extract_high_quality_SJs is TRUE.|
+|junction_window|optional|15|The nt distance upstream and downstream of splice junctions to calculate the JAQ. Only checked if extract_high_quality_SJs is TRUE.|
 |max_intron_length|optional|400|Controls the '-G' flag in minimap2 as some complex genes have long introns.|
 |bambu_ndr|optional|1|Controls the bambu 'NDR' option. We set this to 1 by default to return all possible novel isoforms and filter these downstream.|
 |bambu_min_gene_fraction|optional|0.001|Controls the bambu 'min.readFractionByGene' option.|
