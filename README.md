@@ -6,7 +6,7 @@
 
 **IsoLamp is a bash pipeline for the identification of known and novel isoforms from targeted amplicon long-read sequencing data generated with Oxford Nanopore Technologies.**
 
-<img src="https://github.com/josiegleeson/IsoLamp/assets/30969357/fc17b986-5ad2-4e54-a711-358d3f2893cf" width="280" height="125">
+<img src="https://github.com/josiegleeson/IsoLamp/assets/30969357/fc17b986-5ad2-4e54-a711-358d3f2893cf" width="840" height="375">
 
 ## Contents
 
