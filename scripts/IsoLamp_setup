@@ -1,0 +1,23 @@
+#!/bin/bash
+
+chmod u+x IsoLamp
+
+#conda env create -f IsoLamp.yml 
+source env create -f IsoLamp.yml
+
+#conda activate IsoLamp
+source activate IsoLamp
+
+# install SQANTI
+cd scripts
+git clone https://github.com/ConesaLab/SQANTI3.git
+chmod +x SQANTI3/utilities/gtfToGenePred
+
+# install cDNA Cupcake
+git clone https://github.com/youyupei/cDNA_Cupcake.git
+cd cDNA_Cupcake
+python cDNA_Cupcake/setup.py build
+python cDNA_Cupcake/setup.py install
+
+conda deactivate
+

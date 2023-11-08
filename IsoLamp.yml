@@ -1,0 +1,46 @@
+name: IsoLamp
+channels:
+  - conda-forge
+  - bioconda
+  - anaconda
+  - r
+  - defaults
+dependencies:
+  - bbmap
+  - bedtools
+  - samtools
+  - salmon=0.14.2
+  - gffread
+  - gffcompare
+  - minimap2
+  - python=3.7
+  - pip
+  - r-base
+  - r-biocmanager
+  - r-optparse
+  - r-dplyr
+  - bioconductor-bambu
+  - r-factominer
+  - r-factoextra
+  - r-ggrepel
+  - r-rstatix
+  - r-reshape
+  - r-purrr
+  - r-ggplot2
+  - pip:
+    - pandas
+    - pysam
+    - numpy
+    - tqdm
+# SQANTI
+#  - numpy
+#  - openssl
+#  - pybedtools
+#  - pysam
+#  - scipy
+#  - cython
+#  - scikit-learn
+#  - r-ggplotify
+#  - biopython
+#  - bx-python
+#  - bcbio-gff
