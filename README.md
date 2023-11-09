@@ -100,13 +100,13 @@ Please see the sirv_test_data/test_fasta directory for an example of the structu
 **Note:** the 'barcode' name is arbitrary, your subdirectories can be renamed to sample names or any identifiers.
 
 ## Parameters
-Basic parameters file:
+Basic parameters file to run IsoLamp with default settings:
 ```
 OUTPUT_NAME=CLCN3
 ENSG_ID=ENSG00000109572
 READS="path/to/sample/fa_folders"
-GENOME="path/to/hg38.fa"
-ANNOTATION="path/to/gencode.v44.annotation.gtf"
+GENOME="path/to/genome.fa"
+ANNOTATION="path/to/annotation.gtf"
 ```
 Full parameters file (with comments):
 ```
@@ -116,22 +116,14 @@ OUTPUT_NAME=CLCN3
 # the ENSEMBL ID is used to filter reference files to increase speed
 ENSG_ID=ENSG00000109572
 
-
 ## Paths to data ##
 # standard output for barcoded amplicon sequencing is multiple barcode/sample folers containing fastq or fasta files
 # supports .fasta or .fastq
 READS="path/to/sample/fa_folders"
 # path to reference genome 
-GENOME="path/to/hg38.fa"
+GENOME="path/to/genome.fa"
 # path to reference annotation
-ANNOTATION="path/to/gencode.v44.annotation.gtf"
-
-# path to a CSV of sample IDs and group IDs
-grouping_data="path/to/group_ids.csv" # default is NULL, leave blank for default
-
-## Minimum read count per isoform threshold ##
-read_count_minimum=5 # default is 5, leave blank for default
-samples_minimum=3 # default is half the total number of samples (rounded down to integer), leave blank for default
+ANNOTATION="path/to/annotation.gtf"
 
 ## Downsampling to be set to TRUE or FALSE ##
 # Downsampling results in the same number of reads for every sample, reducing inter-sample bias
@@ -146,13 +138,26 @@ primer_site_based_filter=TRUE # default is FALSE
 forward_primers="path/to/forward.bed" # default is NULL
 reverse_primers="path/to/reverse.bed" # default is NULL
 
+## Extract high accuracy reads to be set to TRUE or FALSE ##
+extract_high_accuracy_reads=TRUE # leave blank for default, TRUE
+# minimum read accuracy
+minimum_read_accuracy=0.95 # leave blank for default, 0.95
+##
+
 ## Extract high quality splice junctions to be set to TRUE or FALSE ##
-# Recommended to increase novel isoform accuracy
-extract_high_quality_SJs=TRUE # default is FALSE
+extract_high_quality_SJs=FALSE # leave blank for default, FALSE
 # minimum junction alignment quality
-JAQ=0.9
-# window (nt) upstream and downstream of splice junction
-junction_window=15 
+JAQ=0.9 # leave blank for default, 0.9
+# window upstream and downstream of splice junction
+junction_window=15 # leave blank for default, 15
+##
+
+## Minimum read count per isoform threshold ##
+read_count_minimum=5 # default is 5, leave blank for default
+samples_minimum=3 # default is half the total number of samples (rounded down to integer), leave blank for default
+
+# Path to a CSV of sample IDs and group IDs
+grouping_data="path/to/group_ids.csv" # leave blank for default, NULL
 
 ## Other options ##
 # minimap2 -G intron length, leave blank for default
