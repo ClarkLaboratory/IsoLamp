@@ -33,7 +33,6 @@ chmod +x IsoLamp
 conda env create -f IsoLamp_env.yml
 conda activate IsoLamp
 ```
-**Note:** depending on your operating system you may need to edit the setup script to either 'conda activate' or 'source activate'.
 
 ## General Command Line Usage
 We suggest adding IsoLamp to your PATH so it can be run from any directory:
@@ -151,9 +150,9 @@ reverse_primers="path/to/reverse.bed" # default is NULL
 # Recommended to increase novel isoform accuracy
 extract_high_quality_SJs=TRUE # default is FALSE
 # minimum junction alignment quality
-JAQ=0.8
+JAQ=0.9
 # window (nt) upstream and downstream of splice junction
-junction_window=25 
+junction_window=15 
 
 ## Other options ##
 # minimap2 -G intron length, leave blank for default
