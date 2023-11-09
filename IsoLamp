@@ -159,6 +159,7 @@ function concat_files() {
 }
 
 function downsampling_function() {
+	
 	if [ -z "$downsampling" ]
 	then
     		downsampling=TRUE # set to the default value if empty
@@ -195,10 +196,16 @@ function downsampling_function() {
 		redirect_output downsample_for_loop
 
 		# if statement for downsampling failing
-		
+		if [ -z "$(ls -A "$OUTPUT_NAME/downsampled_reads")" ]
+		then
+   			echo "Failed to downsample reads, check logs file."
+			exit 1
+		else
+    		:
+		fi
+
 		# set path to downsampled reads
 		path_to_reads=$OUTPUT_NAME/downsampled_reads
-
 		total_reads_post_downsample=$(cat $OUTPUT_NAME/downsampled_reads/*.f* | grep "^[>@]" | wc -l)
 	fi
 
@@ -279,6 +286,21 @@ function get_JWRs() {
 
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam
 
+		# Check JWR completed
+		if [ -e "$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam" ]
+		then
+			if [ -s "$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam" ]
+			then
+				:
+			else
+				echo "Failed to extract splice junctions, check logs file"
+				exit 1
+			fi
+		else
+			echo "Failed to extract splice junctions, check logs file"
+			exit 1
+		fi
+
 	else
 		
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
@@ -288,6 +310,7 @@ function get_JWRs() {
 }
 
 function run_bambu_function() {
+	
 	echo "Identifying novel isoforms with Bambu..."
 	mkdir $OUTPUT_NAME/bambu
 
@@ -326,6 +349,7 @@ function run_bambu_function() {
 }
 
 function read_count_function_first_pass() {
+	
 	if [ -z "$read_count_minimum" ]
 	then
     	read_count_minimum=5 # set to the default value if empty
@@ -414,9 +438,11 @@ function primer_site_function() {
 		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_primer.gtf
 		cat $OUTPUT_NAME/temp_files/updated_transcriptome_first_pass.txt > $OUTPUT_NAME/temp_files/updated_transcriptome.txt
 	fi
+
 }
 
 function create_metatranscriptome() {
+	
 	echo "Mapping to updated transcriptome with novel isoforms..."
 	mkdir $OUTPUT_NAME/updated_transcriptome
 
@@ -441,6 +467,7 @@ function create_metatranscriptome() {
 		echo "Failed to index with salmon, check logs file"
 		exit 1
   	fi
+
 }
 
 function remapping_function() {
@@ -479,6 +506,7 @@ function remapping_function() {
 }
 
 function combine_quants_function() {
+	
 	if [ -z "$read_count_minimum" ]
 	then
     	read_count_minimum="5" # set to the default value if empty
@@ -529,6 +557,7 @@ function read_count_function_second_pass() {
 }
 
 function gffcomp_function() {
+	
 	mkdir $OUTPUT_NAME/annotated_isoforms
 
 	# create file of bambu tx classes for remaining isoforms
@@ -560,6 +589,7 @@ function plot_accuarcy () {
 }
 
 function compare_proportions_test() {
+	
 	# only run if grouping is provided
 	if [ -z "$grouping_data" ] 
 	then
@@ -600,9 +630,7 @@ Number of reads mapped to known/novel isoforms: $reads_remaining_final
 EOT
 }
 
-
-
-########## 0. Counting the number of reads and downsampling ##########
+########## Counting the number of reads and downsampling ##########
 
 # filter input references
 filter_reference_files
@@ -614,13 +642,12 @@ concat_files
 # downsampling
 downsampling_function
 
-
-########## 1. Aligning sample fasta files to reference genome ##########
+########## Aligning sample fasta files to reference genome ##########
 
 # run minimap2
 mapping_genome_function
 
-########## 2.a. Correcting and collapsing transcripts with bambu ##########
+########## Correcting and collapsing transcripts with bambu ##########
 
 # run JWR jecker python script
 get_JWRs
@@ -628,8 +655,7 @@ get_JWRs
 # run bambu in R
 run_bambu_function
 
-
-########## 2.b. Filtering bambu transcripts and creating a transcriptome ##########
+########## Filtering bambu transcripts and creating a transcriptome ##########
 
 # read count filter 
 read_count_function_first_pass
@@ -640,14 +666,12 @@ primer_site_function
 # metatranscriptome with salmon
 create_metatranscriptome
 
-
-########## 2.c. Re-aligning and quantifying filtered bambu transcripts  ##########
+########## Re-aligning and quantifying filtered bambu transcripts  ##########
 
 # remap to salmon metatranscriptome
 remapping_function
 
-
-########## 2.d. Generating count matrix   ##########
+########## Generating count matrix ##########
 
 # Rscript to combine quant.sf files and filter by read min counts
 combine_quants_function
@@ -655,7 +679,7 @@ combine_quants_function
 # some zero count isoforms result after the secound round of quants with salmon
 read_count_function_second_pass
 
-###### Generate plots
+###### Generate plots ##########
 echo "Generating PCA plot..."
 plot_PCA
 
@@ -665,13 +689,12 @@ plot_accuarcy
 # proportion test between groups
 compare_proportions_test
 
-########## 3. Annotating transcripts ##########
+########## Annotating isoforms ##########
 echo "Annotating isoforms..."
 # run with gffcompare
 gffcomp_function
 
-
-########## 4. Report ##########
+########## Report ##########
 
 # make report txt file
 echo "Generating report..."
@@ -680,7 +703,6 @@ generate_report_function
 # remove temp files
 #rm -rf $OUTPUT_NAME/temp_files
 
-########## Finished ##########
 echo "Complete"
 
 
