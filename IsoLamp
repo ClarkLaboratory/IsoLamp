@@ -546,11 +546,11 @@ function sqanti_function() {
   	export PYTHONPATH="$SCRIPT_DIR/scripts/cDNA_Cupcake/sequence/:$PYTHONPATH"
   	export PYTHONPATH="$SCRIPT_DIR/scripts/cDNA_Cupcake/:$PYTHONPATH"
   
-		
+	
 	python $SCRIPT_DIR/scripts/SQANTI3/sqanti3_qc.py \
 		$OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf \
 		$ANNOTATION_FILT $GENOME_FILT \
-		-d $OUTPUT_NAME/sqanti -o $OUTPUT_NAME/annotated_isoforms --report skip
+		-d $OUTPUT_NAME/annotated_isoforms -o $OUTPUT_NAME/sqanti --report skip
 		#--CAGE_peak $REF_HG38/refTSS_v3.3_human_coordinate.hg38.bed \
 		#--polyA_peak $REF_HG38/atlas.clusters.2.0.GRCh38.96.bed --polyA_motif_list $REF_HG38/human.polyA.list.txt
 
@@ -685,7 +685,7 @@ echo "Annotating isoforms..."
 gffcomp_function
 
 # run with SQANTI
-#sqanti_function
+sqanti_function
 
 
 ########## 4. Report ##########
