@@ -57,8 +57,8 @@ function filter_reference_files() {
 	grep $ENSG_ID $ANNOTATION > $OUTPUT_NAME/temp_files/filt_chr.gtf
 	ANNOTATION_FILT=$OUTPUT_NAME/temp_files/filt_chr.gtf
 
-	# get chr from GTF to filter genome
-	chr=$( cat $ANNOTATION_FILT | sed -n '10p' | awk '{ print $1}' )
+	# get chr from 2nd line in filtered GTF to filter genome
+	chr=$( cat $ANNOTATION_FILT | sed -n '2p' | awk '{ print $1}' )
 	
 	# check file exists and is not empty
 	if [ -e "$ANNOTATION_FILT" ]
