@@ -1,5 +1,4 @@
 #!/usr/bin/env Rscript
-bamfile <- "~/Documents/sirv_benchmarking_JAQ/sirv5_c/mapped_data/sirv5_c_primary_merged.bam"
 
 # Function for importing BAM file and calc accuracy 
 import_bam_get_accuracy <- function(bamfile) {
@@ -43,7 +42,7 @@ plot_accuracy <- function(bam_primary, output) {
   plot <- ggplot(data=bam_primary, aes(x=read_accuracy, y=after_stat(scaled))) +
     geom_density(alpha = 0.4, show.legend = FALSE, fill="steelblue3") +
     theme_bw(base_size=14) +
-    xlim(0.5,1) +
+    xlim(0.8,1) +
     xlab("Read accuracy") +
     ylab("Density")
   suppressMessages(print(plot))

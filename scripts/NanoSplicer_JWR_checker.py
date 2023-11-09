@@ -276,7 +276,7 @@ def main():
         if '=' in read.cigarstring or 'X' in read.cigarstring:
             break
 
-    print("Searching for JWRs...\n\n")
+    print("Extracting splice junctions...\n\n")
 
     # get splice junctions from BAM
     algn_file = pysam.AlignmentFile(param.bamfile)

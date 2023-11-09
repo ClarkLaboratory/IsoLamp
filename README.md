@@ -178,7 +178,9 @@ Detailed descriptions of parameters:
 |primer_site_based_filter|optional|FALSE|Whether to remove isoforms that do not overlap the primers used to perform amplicon sequencing. We recommend using this option.|
 |forward_primers|optional|NULL|BED file of forward primers. Only checked if primer_site_based_filter is TRUE.|
 |reverse_primers|optional|NULL|BED file of reverse primers. Only checked if primer_site_based_filter is TRUE.|
-|extract_high_quality_SJs|optional|FALSE|Whether to extract reads with high quality splice junctions, and run Bambu on these reads. We recommend using this option to increase accuracy in calling novel isoforms.|
+|extract_high_accuracy_reads|optional|TRUE|Whether to extract reads with a high accuracy and run Bambu on these reads. We recommend using this option to increase accuracy in calling novel isoforms.|
+|minimum_read_accuracy|optional|0.95|The minimum read accuracy, only checked if extract_high_accuracy_reads is TRUE.|
+|extract_high_quality_SJs|optional|FALSE|Whether to extract reads with high quality splice junctions, and run Bambu on these reads. This option may increase accuracy in calling novel isoforms, and if both this option and minimum_read_accuracy are set to TRUE, extract_high_quality_SJs will be prioritised. Extracting SJs significantly increases run time and memory usage.|
 |JAQ|optional|0.9|The minimum junction alignment quality every junction must meet in order for a read to be included. Only checked if extract_high_quality_SJs is TRUE.|
 |junction_window|optional|15|The nt distance upstream and downstream of splice junctions to calculate the JAQ. Only checked if extract_high_quality_SJs is TRUE.|
 |max_intron_length|optional|400|Controls the '-G' flag in minimap2 as some complex genes have long introns.|

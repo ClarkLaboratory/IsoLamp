@@ -265,6 +265,11 @@ function mapping_genome_function() {
 
 function get_JWRs() {
 	
+	if [ -z "$extract_high_quality_SJs" ]
+	then
+    	extract_high_quality_SJs=FALSE # set to the default value if empty
+  	fi
+
 	if [ "$extract_high_quality_SJs" == TRUE ]
 	then
 		
@@ -301,10 +306,53 @@ function get_JWRs() {
 			exit 1
 		fi
 
-	else
-		
-		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
 
+	fi
+
+}
+
+
+function get_accurate_reads() {
+	
+	if [ -z "$extract_high_accuracy_reads" ]
+	then
+    	extract_high_accuracy_reads=TRUE # set to the default value if empty
+  	fi
+
+	if [ "$extract_high_accuracy_reads" == TRUE ] && [ "$extract_high_quality_SJs" == FALSE ]
+	then
+		
+		if [ -z "$minimum_read_accuracy" ]
+		then
+    		minimum_read_accuracy=0.95 # set to the default value if empty
+  		fi
+
+		echo "Extracting high accuracy reads..."
+		redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
+		samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
+
+		number_reads_SJ=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt | wc -l)
+
+		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
+
+		# Check completed
+		if [ -e "$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam" ]
+		then
+			if [ -s "$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam" ]
+			then
+				:
+			else
+				echo "Failed to extract high accuracy reads, check logs file"
+				exit 1
+			fi
+		else
+			echo "Failed to extract high accuracy reads, check logs file"
+			exit 1
+		fi
+
+	elif [ "$extract_high_quality_SJs" == FALSE ] && [ "$extract_high_accuracy_reads" == FALSE ]
+	then
+		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
 	fi
 
 }
@@ -620,7 +668,7 @@ Total number of reads in samples/barcodes: $total_reads_input
 
 Total number of reads in samples/barcodes post-downsampling: $total_reads_post_downsample
 Number of reads mapped to genome: $number_reads_mapped
-Number of reads with high quality splice junctions: $number_reads_SJ
+Number of high quality reads used to identify isoforms: $number_reads_SJ
 
 Known isoforms identified: $filtered_transcripts_known
 Novel isoforms identified: $filtered_transcripts_novel
@@ -651,6 +699,7 @@ mapping_genome_function
 
 # run JWR jecker python script
 get_JWRs
+get_accurate_reads
 
 # run bambu in R
 run_bambu_function
