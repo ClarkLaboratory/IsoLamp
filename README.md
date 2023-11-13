@@ -4,7 +4,7 @@
 [![Generic badge](https://img.shields.io/badge/Language-Bash-<COLOR>.svg)](https://shields.io/)
 [![Generic badge](https://img.shields.io/badge/Publication-01.xx-<COLOR>.svg)](https://shields.io/)
 
-**IsoLamp is a bash pipeline for the identification of known and novel isoforms from targeted amplicon long-read sequencing data generated with Oxford Nanopore Technologies.**
+**IsoLamp is a bash pipeline for the identification of known and novel isoforms from targeted amplicon long-read sequencing data generated with Oxford Nanopore (ONT) sequencing.**
 
 <img src="https://github.com/josiegleeson/IsoLamp/assets/30969357/36e878d7-46c8-4f6a-a2ef-fb39d42e2339" width="960" height="440">
 
@@ -93,7 +93,7 @@ Packages:
   - purrr
 
 ## Input Data
-The pipeline is designed to run on barcoded data produced by Oxford Nanopore Technologies, typically from amplicon sequencing of a gene of interest. This is typically a directory containing subdirectories titled 'barcode01', 'barcode02' etc. Each barcode directory contains either single or multiple FASTA or FASTQ files of reads. If you have multiple experiments amplifying different genes, run the pipeline once for each gene.
+The pipeline is designed to run on barcoded data produced on the Oxford Nanopore platform, typically from amplicon sequencing of a gene of interest. This is typically a directory containing subdirectories titled 'barcode01', 'barcode02' etc. Each barcode directory contains either single or multiple FASTA or FASTQ files of reads. If you have multiple experiments amplifying different genes, run the pipeline once for each gene.
 
 Please see the sirv_test_data/test_fasta directory for an example of the structure required. If you don't have barcoded data, please create a subdirectory with your single sample name and place all read FASTA or FASTQ files inside this directory (nanopore_data/barcode01/reads.fastq, nanopore_data/barcode02/reads.fastq, ...).
 
