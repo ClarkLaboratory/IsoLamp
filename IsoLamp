@@ -263,6 +263,49 @@ function mapping_genome_function() {
 
 }
 
+function get_accurate_reads() {
+	
+	if [ -z "$extract_high_accuracy_reads" ]
+	then
+    	extract_high_accuracy_reads=TRUE # set to the default value if empty
+  	fi
+
+	if [ "$extract_high_accuracy_reads" == TRUE ]
+	then
+		
+		if [ -z "$minimum_read_accuracy" ]
+		then
+    		minimum_read_accuracy=0.95 # set to the default value if empty
+  		fi
+
+		echo "Extracting high accuracy reads..."
+		redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
+		samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
+		samtools index $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
+
+		number_reads_acc=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt | wc -l)
+
+		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
+
+		# Check completed
+		if [ -e "$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam" ]
+		then
+			if [ -s "$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam" ]
+			then
+				:
+			else
+				echo "Failed to extract high accuracy reads, check logs file"
+				exit 1
+			fi
+		else
+			echo "Failed to extract high accuracy reads, check logs file"
+			exit 1
+		fi
+
+	fi
+
+}
+
 function get_JWRs() {
 	
 	if [ -z "$extract_high_quality_SJs" ]
@@ -270,7 +313,7 @@ function get_JWRs() {
     	extract_high_quality_SJs=FALSE # set to the default value if empty
   	fi
 
-	if [ "$extract_high_quality_SJs" == TRUE ]
+	if [ "$extract_high_quality_SJs" == TRUE ] && [ "$extract_high_accuracy_reads" == TRUE ]
 	then
 		
 		if [ -z "$junction_window" ]
@@ -283,9 +326,11 @@ function get_JWRs() {
     		JAQ=0.9 # set to the default value if empty
   		fi
 		
-		python3 $SCRIPT_DIR/scripts/NanoSplicer_JWR_checker.py --window $junction_window $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_JAQ.csv
+		# update BAM
+
+		python3 $SCRIPT_DIR/scripts/NanoSplicer_JWR_checker.py --window $junction_window $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_JAQ.csv
 		Rscript $SCRIPT_DIR/scripts/read_list_high_JAQ.R -i $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_JAQ.csv -j $JAQ -o $OUTPUT_NAME
-		samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_JAQ_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
+		samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_JAQ_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
 
 		number_reads_SJ=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_JAQ_minimum.txt | wc -l)
 
@@ -305,51 +350,12 @@ function get_JWRs() {
 			echo "Failed to extract splice junctions, check logs file"
 			exit 1
 		fi
-
-
-	fi
-
-}
-
-
-function get_accurate_reads() {
 	
-	if [ -z "$extract_high_accuracy_reads" ]
+	elif [ "$extract_high_quality_SJs" == TRUE ] && [ "$extract_high_accuracy_reads" == FALSE ]
 	then
-    	extract_high_accuracy_reads=TRUE # set to the default value if empty
-  	fi
-
-	if [ "$extract_high_accuracy_reads" == TRUE ] && [ "$extract_high_quality_SJs" == FALSE ]
-	then
-		
-		if [ -z "$minimum_read_accuracy" ]
-		then
-    		minimum_read_accuracy=0.95 # set to the default value if empty
-  		fi
-
-		echo "Extracting high accuracy reads..."
-		redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
-		samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
-
-		number_reads_SJ=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt | wc -l)
-
-		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
-
-		# Check completed
-		if [ -e "$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam" ]
-		then
-			if [ -s "$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam" ]
-			then
-				:
-			else
-				echo "Failed to extract high accuracy reads, check logs file"
-				exit 1
-			fi
-		else
-			echo "Failed to extract high accuracy reads, check logs file"
-			exit 1
-		fi
-
+    	echo "Cannot extract high quality splice junctions if high accuracy reads are not extracted first. Set extract_high_accuracy_reads=TRUE."
+		echo "Skipping SJ extraction."
+		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
 	elif [ "$extract_high_quality_SJs" == FALSE ] && [ "$extract_high_accuracy_reads" == FALSE ]
 	then
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
@@ -472,12 +478,12 @@ function primer_site_function() {
 		total_bambu_counts=$(cat "$OUTPUT_NAME/bambu/counts_transcript.txt" | awk '{total=total+$3} END{printf "%.0f", total}')
 		
 		# calculate 90% of the total transcript counts
-		primer_threshold=$(printf "%.0f" "$(echo "$total_bambu_counts * 0.9" | bc)")
+		primer_threshold=$(printf "%.0f" "$(echo "$total_bambu_counts * 0.7" | bc)")
 
 		# check that at least 90% of the counts are remaining after primer filtering
 		if [ "$((total_kept_counts))" -lt "$((primer_threshold))" ] 
 		then
-			echo "WARNING: primer filtering removed isoforms with >10% of counts assigned by Bambu"
+			echo "WARNING: primer filtering removed isoforms with >30% of counts assigned by Bambu"
 		fi
 
 	elif [ "$primer_site_based_filter" == FALSE ]
@@ -630,7 +636,7 @@ function plot_PCA() {
 
 }
 
-function plot_accuarcy () {
+function plot_accuracy () {
 	
 	redirect_output Rscript $SCRIPT_DIR/scripts/accuracy.R $OUTPUT_NAME/mapped_data/$OUTPUT_NAME"_primary_merged.bam" "$OUTPUT_NAME/$OUTPUT_NAME"
 
@@ -668,7 +674,8 @@ Total number of reads in samples/barcodes: $total_reads_input
 
 Total number of reads in samples/barcodes post-downsampling: $total_reads_post_downsample
 Number of reads mapped to genome: $number_reads_mapped
-Number of high quality reads used to identify isoforms: $number_reads_SJ
+Number of high accuracy reads used to identify isoforms: $number_reads_acc
+Number of reads with accurate SJs used to identify isoforms: $number_reads_SJ
 
 Known isoforms identified: $filtered_transcripts_known
 Novel isoforms identified: $filtered_transcripts_novel
@@ -698,8 +705,8 @@ mapping_genome_function
 ########## Correcting and collapsing transcripts with bambu ##########
 
 # run JWR jecker python script
-get_JWRs
 get_accurate_reads
+get_JWRs
 
 # run bambu in R
 run_bambu_function
@@ -729,11 +736,9 @@ combine_quants_function
 read_count_function_second_pass
 
 ###### Generate plots ##########
-echo "Generating PCA plot..."
+echo "Generating plots..."
 plot_PCA
-
-echo "Generating accuarcy plot..."
-plot_accuarcy 
+plot_accuracy 
 
 # proportion test between groups
 compare_proportions_test
