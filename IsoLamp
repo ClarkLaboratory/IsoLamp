@@ -275,7 +275,7 @@ function get_accurate_reads() {
 		
 		if [ -z "$minimum_read_accuracy" ]
 		then
-    		minimum_read_accuracy=0.95 # set to the default value if empty
+    		minimum_read_accuracy=0.98 # set to the default value if empty
   		fi
 
 		echo "Extracting high accuracy reads..."
@@ -318,7 +318,7 @@ function get_JWRs() {
 		
 		if [ -z "$junction_window" ]
 		then
-    		junction_window=15 # set to the default value if empty
+    		junction_window=20 # set to the default value if empty
   		fi
 
 		if [ -z "$JAQ" ]
