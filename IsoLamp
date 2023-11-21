@@ -175,7 +175,7 @@ function downsampling_function() {
 
 		echo "Downsampling reads..."
 
-		mkdir $OUTPUT_NAME/downsampled_reads
+		mkdir $OUTPUT_NAME/temp_files/downsampled_reads
 
 		function downsample_for_loop() { 
 			for filename in $OUTPUT_NAME/temp_files/reads/*.fa
@@ -188,7 +188,7 @@ function downsampling_function() {
 				# downsample the reads using reformat.sh from BBMap
 				reformat.sh sample=$number_reads_downsample \
 				in=$OUTPUT_NAME/temp_files/reads/$sample_name.fa \
-				out=$OUTPUT_NAME/downsampled_reads/$sample_name.fa
+				out=$OUTPUT_NAME/temp_files/downsampled_reads/$sample_name.fa
 
 			done
 		}
@@ -196,7 +196,7 @@ function downsampling_function() {
 		redirect_output downsample_for_loop
 
 		# if statement for downsampling failing
-		if [ -z "$(ls -A "$OUTPUT_NAME/downsampled_reads")" ]
+		if [ -z "$(ls -A "$OUTPUT_NAME/temp_files/downsampled_reads")" ]
 		then
    			echo "Failed to downsample reads, check logs file."
 			exit 1
@@ -205,8 +205,8 @@ function downsampling_function() {
 		fi
 
 		# set path to downsampled reads
-		path_to_reads=$OUTPUT_NAME/downsampled_reads
-		total_reads_post_downsample=$(cat $OUTPUT_NAME/downsampled_reads/*.f* | grep "^[>@]" | wc -l)
+		path_to_reads=$OUTPUT_NAME/temp_files/downsampled_reads
+		total_reads_post_downsample=$(cat $OUTPUT_NAME/temp_files/downsampled_reads/*.f* | grep "^[>@]" | wc -l)
 	fi
 
 }
@@ -257,11 +257,34 @@ function mapping_genome_function() {
 		echo "Failed to create BAM index, check logs file"
 		exit 1
 	fi
+	
+}
 
+function extract_mapped_genome_reads() {
+	
+	# get list of reads mapped to genome to filter FASTQs
+	samtools view $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam | awk '{print $1}' | sort | uniq > $OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt
+	
 	# counts total reads in a BAM file for report
-	number_reads_mapped=$(samtools view $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam | awk '{print $1}' | sort | uniq | wc -l)
+	number_reads_mapped=$(cat $OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt | wc -l)
+
+	mkdir $OUTPUT_NAME/temp_files/mapped_reads
+	
+	function extract_mapped_reads_loop() {
+		for filename in $path_to_reads/*.fa
+		do
+			base=$(basename $filename)
+			sample_reads="${base%.*}"
+			
+			filterbyname.sh in=$path_to_reads/${sample_reads}.fa out=$OUTPUT_NAME/temp_files/mapped_reads/${sample_reads}.fa names=$OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt include=t
+		done
+	}
+
+	redirect_output extract_mapped_reads_loop
+	path_to_reads=$OUTPUT_NAME/temp_files/mapped_reads
 
 }
+
 
 function get_accurate_reads() {
 	
@@ -701,6 +724,7 @@ downsampling_function
 
 # run minimap2
 mapping_genome_function
+extract_mapped_genome_reads
 
 ########## Correcting and collapsing transcripts with bambu ##########
 
@@ -756,6 +780,15 @@ generate_report_function
 
 # remove temp files
 #rm -rf $OUTPUT_NAME/temp_files
+
+# compress reads
+gzip $OUTPUT_NAME/temp_files/reads/*
+gzip $OUTPUT_NAME/temp_files/mapped_reads/*
+
+if [ "$downsampling" == TRUE ]
+then
+	gzip $OUTPUT_NAME/temp_files/downsampled_reads/*
+fi
 
 echo "Complete"
 
