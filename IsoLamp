@@ -300,6 +300,15 @@ function extract_mapped_genome_reads() {
 	redirect_output extract_mapped_reads_loop
 	path_to_reads=$OUTPUT_NAME/temp_files/mapped_reads
 
+	# print total reads per barcode mapped to genome (and full length if primer filtering is TRUE)
+	for filename in $OUTPUT_NAME/temp_files/mapped_reads/*.fa
+	do
+		base=$(basename "$filename")
+		sample_name="${base%.*}" 
+				
+		cat $OUTPUT_NAME/temp_files/mapped_reads/$sample_name.fa | grep "^[>@]" | wc -l >> $OUTPUT_NAME/temp_files/reads_per_barcode_mapped_genome.txt 
+	done
+
 }
 
 function get_accurate_reads() {
