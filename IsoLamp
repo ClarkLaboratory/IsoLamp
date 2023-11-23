@@ -261,12 +261,29 @@ function mapping_genome_function() {
 }
 
 function extract_mapped_genome_reads() {
-	
+
 	# get list of reads mapped to genome to filter FASTQs
 	samtools view $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam | awk '{print $1}' | sort | uniq > $OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt
 	
 	# counts total reads in a BAM file for report
 	number_reads_mapped=$(cat $OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt | wc -l)
+	
+	if [ "$primer_site_based_filter" == TRUE ]
+	then
+		bedtools intersect -split -wa -u -F 0.8 -abam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -b $forward_primers > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_forward_primers.bam
+		bedtools intersect -split -wa -u -F 0.8 -a $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_forward_primers.bam -b $reverse_primers > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_primers.bam
+	
+		# get list of reads mapped to primers and genome to filter FASTQs
+		samtools view $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_primers.bam | awk '{print $1}' | sort | uniq > $OUTPUT_NAME/temp_files/reads_ids_full_length.txt
+
+		# get reads in primer filter
+		list_for_filtering_reads=$OUTPUT_NAME/temp_files/reads_ids_full_length.txt
+		number_reads_full_length=$(cat $OUTPUT_NAME/temp_files/reads_ids_full_length.txt | wc -l)
+
+	else
+		# get reads mapped to genome
+		list_for_filtering_reads=$OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt
+	fi
 
 	mkdir $OUTPUT_NAME/temp_files/mapped_reads
 	
@@ -276,7 +293,7 @@ function extract_mapped_genome_reads() {
 			base=$(basename $filename)
 			sample_reads="${base%.*}"
 			
-			filterbyname.sh in=$path_to_reads/${sample_reads}.fa out=$OUTPUT_NAME/temp_files/mapped_reads/${sample_reads}.fa names=$OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt include=t
+			filterbyname.sh in=$path_to_reads/${sample_reads}.fa out=$OUTPUT_NAME/temp_files/mapped_reads/${sample_reads}.fa names=$list_for_filtering_reads include=t
 		done
 	}
 
@@ -284,7 +301,6 @@ function extract_mapped_genome_reads() {
 	path_to_reads=$OUTPUT_NAME/temp_files/mapped_reads
 
 }
-
 
 function get_accurate_reads() {
 	
@@ -298,12 +314,19 @@ function get_accurate_reads() {
 		
 		if [ -z "$minimum_read_accuracy" ]
 		then
-    		minimum_read_accuracy=0.98 # set to the default value if empty
+    		minimum_read_accuracy=0.95 # set to the default value if empty
   		fi
 
 		echo "Extracting high accuracy reads..."
-		redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
-		samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
+		if [ "$primer_site_based_filter" == TRUE ]
+		then
+			redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_primers.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
+			samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_primers.bam
+		else
+			redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
+			samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
+		fi
+		
 		samtools index $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
 
 		number_reads_acc=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt | wc -l)
@@ -697,6 +720,7 @@ Total number of reads in samples/barcodes: $total_reads_input
 
 Total number of reads in samples/barcodes post-downsampling: $total_reads_post_downsample
 Number of reads mapped to genome: $number_reads_mapped
+Number of reads mapped to genome and overlap forward and reverse primers: $number_reads_full_length
 Number of high accuracy reads used to identify isoforms: $number_reads_acc
 Number of reads with accurate SJs used to identify isoforms: $number_reads_SJ
 
