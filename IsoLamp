@@ -459,11 +459,8 @@ function run_bambu_function() {
 
 function read_count_function_first_pass() {
 	
-	if [ -z "$read_count_minimum" ]
-	then
-    	read_count_minimum=5 # set to the default value if empty
-  	fi
-	
+	read_count_minimum=2
+
 	# filter for bambu isoforms with read count > threshold 
 	cat "$OUTPUT_NAME/bambu/counts_transcript.txt" | awk -v min_count="$read_count_minimum" '{ if ($3 > min_count ) print $1 }' | tail -n +2 > "$OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt"
 
@@ -616,20 +613,20 @@ function remapping_function() {
 
 function combine_quants_function() {
 	
-	if [ -z "$read_count_minimum" ]
+	if [ -z "$TPM_minimum" ]
 	then
-    	read_count_minimum="5" # set to the default value if empty
+    	TPM_minimum="5000" # set to the default value if empty
   	fi
 
 	if [ -z "$samples_minimum" ]
 	then
-		samples_minimum=$(echo "scale=0; $num_of_barcodes/2" | bc -l)
+		samples_minimum=$(echo "scale=0; $num_of_barcodes/4" | bc -l) # set to the default value if empty
   	fi
 	
 	echo "Generating isoform counts..."
 
 	# run Rscript to combine quant.sf files produced by salmon to produce isoform counts
-	Rscript $SCRIPT_DIR/scripts/combine_salmon_quants.R -e $ENSG_ID -m $read_count_minimum -s $samples_minimum -o $OUTPUT_NAME
+	Rscript $SCRIPT_DIR/scripts/combine_salmon_quants.R -e $ENSG_ID -m $TPM_minimum -s $samples_minimum -o $OUTPUT_NAME
 
 	# calculate number of reads in the isoform counts for report
 	reads_remaining_final=$(cat $OUTPUT_NAME/temp_files/remaining_read_sum.txt)
@@ -719,8 +716,8 @@ Filters applied:
 	Downsampled to number of reads: $number_reads_downsample
 	Primer site filter: $primer_site_based_filter
 	Extract high quality splice junctions: $extract_high_quality_SJs
-	Read count minimum: $read_count_minimum
-	Samples required to meet read count minimum: $samples_minimum
+	TPM minimum: $TPM_minimum
+	Samples required to meet TPM minimum: $samples_minimum
 	Bambu novel discovery rate (NDR): $bambu_ndr
 	Bambu minimum read fraction by gene: $bambu_min_gene_fraction
 
