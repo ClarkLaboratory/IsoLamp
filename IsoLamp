@@ -268,6 +268,11 @@ function extract_mapped_genome_reads() {
 	# counts total reads in a BAM file for report
 	number_reads_mapped=$(cat $OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt | wc -l)
 	
+	if [ -z "$primer_site_based_filter" ]
+	then
+    		primer_site_based_filter=FALSE # set to the default value if empty
+  	fi
+
 	if [ "$primer_site_based_filter" == TRUE ]
 	then
 		bedtools intersect -split -wa -u -F 0.8 -abam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -b $forward_primers > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_forward_primers.bam
@@ -489,11 +494,6 @@ function read_count_function_first_pass() {
 }
 
 function primer_site_function() {
-	
-	if [ -z "$primer_site_based_filter" ]
-	then
-    		primer_site_based_filter=FALSE # set to the default value if empty
-  	fi
 
 	if [ "$primer_site_based_filter" == TRUE ]
 	then
@@ -715,9 +715,12 @@ Filters applied:
 	Downsampling: $downsampling
 	Downsampled to number of reads: $number_reads_downsample
 	Primer site filter: $primer_site_based_filter
+	Extract high accuracy reads: $extract_high_accuracy_reads
+	Accuracy minimum: $minimum_read_accuracy
 	Extract high quality splice junctions: $extract_high_quality_SJs
+	Splice junction accuracy minimum: $JAQ
 	TPM minimum: $TPM_minimum
-	Samples required to meet TPM minimum: $samples_minimum
+	Samples/barcodes required to meet TPM minimum: $samples_minimum
 	Bambu novel discovery rate (NDR): $bambu_ndr
 	Bambu minimum read fraction by gene: $bambu_min_gene_fraction
 
