@@ -99,26 +99,26 @@ function check_for_fastq_or_fasta_files() {
 	
 	if [ -d "$READS" ] 
 	then
-        # use find to search for FASTQ or FASTA files
-        if find "$READS" -maxdepth 2 -type f \( -name "*.fastq"  -o -name "*.fastq.gz" -o -name "*.fasta" -o -name "*.fa" \) -print -quit | grep -q . 
+        	# use find to search for FASTQ or FASTA files
+	        if find "$READS" -maxdepth 2 -type f \( -name "*.fastq"  -o -name "*.fastq.gz" -o -name "*.fasta" -o -name "*.fa" \) -print -quit | grep -q . 
 		then
 			# Check for empty files
-        	empty_files=$(find "$READS" -type f -empty)
-        	if [ -n "$empty_files" ]
+	        	empty_files=$(find "$READS" -type f -empty)
+	        	if [ -n "$empty_files" ]
 			then
-           		echo "WARNING: The following empty files were found within subdirectories of $READS:"
-            	echo "$empty_files"
+	           		echo "WARNING: The following empty files were found within subdirectories of $READS:"
+	            		echo "$empty_files"
 				echo "This may cause the program to fail."
+	        	fi
+		else
+	        	echo "No FASTQ or FASTA files found within subdirectories of $READS"
+	        	exit 1
         	fi
-        else
-            echo "No FASTQ or FASTA files found within subdirectories of $READS"
-            exit 1
-        fi
 
-    else
-        echo "Directory not found: $READS"
-        exit 1
-    fi
+	else
+        	echo "Directory not found: $READS"
+		exit 1
+	fi
     
 }
 
@@ -133,13 +133,11 @@ function concat_files() {
 		# use basename to extract just the directory name
 		dir_name=$(basename "$dir")
 
-		# if BBMap works on gzipped files this may not be required, minimap2 works on gzipped files
 		# gunzip zipped files
 		for gzipped_file in "$READS/$dir_name"/*.gz 
 		do
 			if [ -f "$gzipped_file" ] 
 			then
-				#echo "Unzipping $gzipped_file..."
 				gunzip "$gzipped_file"
 			fi
 		done
@@ -170,7 +168,7 @@ function downsampling_function() {
 		
 		if [ -z "$number_reads_downsample" ]
 		then
-    		number_reads_downsample="8000" # set to the default value if empty
+    			number_reads_downsample="8000" # set to the default value if empty
   		fi
 
 		echo "Downsampling reads..."
@@ -201,7 +199,7 @@ function downsampling_function() {
    			echo "Failed to downsample reads, check logs file."
 			exit 1
 		else
-    		:
+    			:
 		fi
 
 		# set path to downsampled reads
@@ -236,7 +234,7 @@ function mapping_genome_function() {
 		sample_reads="${base%.*}" 
     
 		function map_reads_minimap2() {
-    		minimap2 -ax splice --eqx -G"${max_intron_length}"k --splice-flank="$splice_flank" $GENOME_FILT $path_to_reads/${sample_reads}.fa | samtools view -bh > $OUTPUT_NAME/mapped_data/${sample_reads}.bam
+    			minimap2 -ax splice --eqx -G"${max_intron_length}"k --splice-flank="$splice_flank" $GENOME_FILT $path_to_reads/${sample_reads}.fa | samtools view -bh > $OUTPUT_NAME/mapped_data/${sample_reads}.bam
 		}
 
 		redirect_output map_reads_minimap2
@@ -320,7 +318,7 @@ function get_accurate_reads() {
 	
 	if [ -z "$extract_high_accuracy_reads" ]
 	then
-    	extract_high_accuracy_reads=TRUE # set to the default value if empty
+    		extract_high_accuracy_reads=TRUE # set to the default value if empty
   	fi
 
 	if [ "$extract_high_accuracy_reads" == TRUE ]
@@ -328,7 +326,7 @@ function get_accurate_reads() {
 		
 		if [ -z "$minimum_read_accuracy" ]
 		then
-    		minimum_read_accuracy=0.95 # set to the default value if empty
+    			minimum_read_accuracy=0.95 # set to the default value if empty
   		fi
 
 		echo "Extracting high accuracy reads..."
@@ -370,7 +368,7 @@ function get_JWRs() {
 	
 	if [ -z "$extract_high_quality_SJs" ]
 	then
-    	extract_high_quality_SJs=FALSE # set to the default value if empty
+    		extract_high_quality_SJs=FALSE # set to the default value if empty
   	fi
 
 	if [ "$extract_high_quality_SJs" == TRUE ] && [ "$extract_high_accuracy_reads" == TRUE ]
@@ -378,12 +376,12 @@ function get_JWRs() {
 		
 		if [ -z "$junction_window" ]
 		then
-    		junction_window=20 # set to the default value if empty
+    			junction_window=20 # set to the default value if empty
   		fi
 
 		if [ -z "$JAQ" ]
 		then
-    		JAQ=0.9 # set to the default value if empty
+    			JAQ=0.9 # set to the default value if empty
   		fi
 		
 		# update BAM
@@ -413,7 +411,7 @@ function get_JWRs() {
 	
 	elif [ "$extract_high_quality_SJs" == TRUE ] && [ "$extract_high_accuracy_reads" == FALSE ]
 	then
-    	echo "Cannot extract high quality splice junctions if high accuracy reads are not extracted first. Set extract_high_accuracy_reads=TRUE."
+    		echo "Cannot extract high quality splice junctions if high accuracy reads are not extracted first. Set extract_high_accuracy_reads=TRUE."
 		echo "Skipping SJ extraction."
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
 	elif [ "$extract_high_quality_SJs" == FALSE ] && [ "$extract_high_accuracy_reads" == FALSE ]
@@ -430,12 +428,12 @@ function run_bambu_function() {
 
 	if [ -z "$bambu_ndr" ] 
   	then
-    	bambu_ndr=1 # set to the default value
+    		bambu_ndr=1 # set to the default value
   	fi
 
 	if [ -z "$bambu_min_gene_fraction" ] 
   	then
-    	bambu_min_gene_fraction=0.001 # set to the default value
+    		bambu_min_gene_fraction=0.001 # set to the default value
   	fi
 
 	# run bambu Rscript 
@@ -599,9 +597,9 @@ function remapping_function() {
   	then
 		if [ "$(ls -A $OUTPUT_NAME/updated_transcriptome/salmon_quants)" ] 
 		then
-     		:
+     			:
 		else
-    		echo "Failed to quantify with salmon, check logs file"
+    			echo "Failed to quantify with salmon, check logs file"
 			exit 1
 		fi
  	else
@@ -615,7 +613,7 @@ function combine_quants_function() {
 	
 	if [ -z "$TPM_minimum" ]
 	then
-    	TPM_minimum="5000" # set to the default value if empty
+    		TPM_minimum="5000" # set to the default value if empty
   	fi
 
 	if [ -z "$samples_minimum" ]
