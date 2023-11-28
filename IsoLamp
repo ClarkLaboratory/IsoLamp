@@ -143,7 +143,11 @@ function concat_files() {
 		done
 		
 		# combine all sample read files into one file
-		cat $READS/$dir_name/*.fa* > $OUTPUT_NAME/temp_files/reads/$dir_name.fa
+		cat $READS/$dir_name/*.fa* > $OUTPUT_NAME/temp_files/reads/$dir_name.firstpass.fa
+		
+		# remove duplicated reads
+		redirect_output dedupe.sh in=$OUTPUT_NAME/temp_files/reads/$dir_name.firstpass.fa out=$OUTPUT_NAME/temp_files/reads/$dir_name.fa rmn=t
+		rm $OUTPUT_NAME/temp_files/reads/$dir_name.firstpass.fa
 
 	done
 
@@ -204,7 +208,7 @@ function downsampling_function() {
 
 		# set path to downsampled reads
 		path_to_reads=$OUTPUT_NAME/temp_files/downsampled_reads
-		total_reads_post_downsample=$(cat $OUTPUT_NAME/temp_files/downsampled_reads/*.f* | grep "^[>@]" | wc -l)
+		total_reads_post_downsample=$(cat $OUTPUT_NAME/temp_files/downsampled_reads/*.f* | grep "^[>@]" | sort | uniq | wc -l)
 	fi
 
 }
@@ -341,7 +345,7 @@ function get_accurate_reads() {
 		
 		samtools index $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
 
-		number_reads_acc=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt | wc -l)
+		number_reads_acc=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt | sort | uniq | wc -l)
 
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
 
@@ -390,7 +394,7 @@ function get_JWRs() {
 		Rscript $SCRIPT_DIR/scripts/read_list_high_JAQ.R -i $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_JAQ.csv -j $JAQ -o $OUTPUT_NAME
 		samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_JAQ_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
 
-		number_reads_SJ=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_JAQ_minimum.txt | wc -l)
+		number_reads_SJ=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_JAQ_minimum.txt | sort | uniq | wc -l)
 
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam
 
@@ -586,8 +590,17 @@ function remapping_function() {
 			base=$(basename $filename)
 			sample_reads="${base%.*}"
 			
-			salmon quant --quiet -i $OUTPUT_NAME/updated_transcriptome -l A -r $path_to_reads/${sample_reads}.fa -o $OUTPUT_NAME/updated_transcriptome/salmon_quants/${sample_reads}
-
+			salmon quant -i $OUTPUT_NAME/updated_transcriptome \
+			-l A \
+			-r $path_to_reads/${sample_reads}.fa \
+			-o $OUTPUT_NAME/updated_transcriptome/salmon_quants/${sample_reads} \
+			-z $OUTPUT_NAME/updated_transcriptome/salmon_quants/${sample_reads}/mapped_${sample_reads}.sam \
+			--auxDir aux \
+			--writeUnmappedNames \
+			--validateMappings \
+			--noLengthCorrection 
+			#--maxReadOcc=2
+		
 		done
 	}
 
