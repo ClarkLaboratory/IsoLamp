@@ -596,10 +596,7 @@ function remapping_function() {
 			-o $OUTPUT_NAME/updated_transcriptome/salmon_quants/${sample_reads} \
 			-z $OUTPUT_NAME/updated_transcriptome/salmon_quants/${sample_reads}/mapped_${sample_reads}.sam \
 			--auxDir aux \
-			--writeUnmappedNames \
-			--validateMappings \
-			--noLengthCorrection 
-			#--maxReadOcc=2
+			--writeUnmappedNames
 		
 		done
 	}
