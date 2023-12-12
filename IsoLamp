@@ -645,7 +645,7 @@ function read_count_function_second_pass() {
 
 	# create list in text file of isoforms that passed threshold
 	# command uses _ and , as sep, prints first column of tx names, removes the word Bambu in tx names, and removes the column header
-	cat $OUTPUT_NAME/${OUTPUT_NAME}_counts.csv | awk -F '[_,]' '{print $1}' | sed 's/Bambu//g' | tail -n +2 > $OUTPUT_NAME/temp_files/isoforms_read_count_min_second_pass.txt
+	cat $OUTPUT_NAME/${OUTPUT_NAME}_counts.csv | awk -F '[,]' '{print $2}' | sed 's/Bambu//g' | tail -n +2 > $OUTPUT_NAME/temp_files/isoforms_read_count_min_second_pass.txt
 	
 	# filter GTF based on isoforms 
 	cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_primer.gtf | grep -wif $OUTPUT_NAME/temp_files/isoforms_read_count_min_second_pass.txt > $OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf

@@ -35,12 +35,12 @@ suppressWarnings({
     # get paths of file to import
     pathtofile <- paste0(outdir,"/updated_transcriptome/salmon_quants/", sample_id, "/quant.sf")
     df <- read.table(pathtofile, header=T)
-    # keep only txname and read counts columns
+    # keep only transcript_id and read counts columns
     df <- df[, c("Name", "NumReads")]
     # replace all "." characters with a "_" in case IsoVis breaks
     sample_id <- gsub("\\.","_",sample_id)
-    # rename cols to TXNAME and the sample id
-    colnames(df) <- c("TXNAME", paste0(sample_id))
+    # rename cols to transcript_id and the sample id
+    colnames(df) <- c("transcript_id", paste0(sample_id))
     rownames(df) <- df[,1]
     df[,1] <- NULL
 
@@ -56,11 +56,12 @@ suppressWarnings({
   rownames(combined_counts) <- gsub("\\..*","", rownames(combined_counts))
 
   # add gene id suffix
-  rownames(combined_counts) <- paste0(rownames(combined_counts), "_", gene_id)
+  #rownames(combined_counts) <- paste0(rownames(combined_counts), "_", gene_id)
+  
   # get order of columns
-  new_col_order <- c("TXNAME", paste0(colnames(combined_counts)))
-  # convert row names to column called TXNAME
-  combined_counts$TXNAME <- rownames(combined_counts)
+  new_col_order <- c("transcript_id", paste0(colnames(combined_counts)))
+  # convert row names to column called transcript_id
+  combined_counts$transcript_id <- rownames(combined_counts)
   # remove rownames
   rownames(combined_counts) <- NULL
   # order df
@@ -68,23 +69,23 @@ suppressWarnings({
   
   # proportions first pass
   
-  # store TXNAME as vector
-  txids <- as.vector(combined_counts$TXNAME)
+  # store transcript_id as vector
+  txids <- as.vector(combined_counts$transcript_id)
   
   # copy counts to new df
   combined_props <- combined_counts
-  combined_props$TXNAME <- NULL
+  combined_props$transcript_id <- NULL
   
   combined_props_names <-c(paste0(colnames(combined_props)))
   # calculate proportions per sample
   combined_props_df <- data.frame(lapply(combined_props, function(x) x / sum(x)))
   colnames(combined_props_df) <- combined_props_names
-  # add TXNAME back and order df
-  combined_props_df$TXNAME <- txids
-  combined_props_df <- combined_props_df[, c("TXNAME", combined_props_names)]
+  # add transcript_id back and order df
+  combined_props_df$transcript_id <- txids
+  combined_props_df <- combined_props_df[, c("transcript_id", combined_props_names)]
   
-  combined_counts <- combined_counts %>% dplyr::arrange(TXNAME)
-  combined_props_df <- combined_props_df %>% dplyr::arrange(TXNAME)
+  combined_counts <- combined_counts %>% dplyr::arrange(transcript_id)
+  combined_props_df <- combined_props_df %>% dplyr::arrange(transcript_id)
  
   
   # apply read count and samples minimum thresholds
@@ -93,32 +94,37 @@ suppressWarnings({
   
   # proportions second pass
   
-  combined_counts_filtered <- combined_counts %>% filter(TXNAME %in% combined_props_df_filt$TXNAME)
+  combined_counts_filtered <- combined_counts %>% filter(transcript_id %in% combined_props_df_filt$transcript_id)
   
-  # store TXNAME as vector
-  txids <- as.vector(combined_counts_filtered$TXNAME)
+  # store transcript_id as vector
+  txids <- as.vector(combined_counts_filtered$transcript_id)
   
   # copy counts to new df
   combined_props_final <- combined_counts_filtered
-  combined_props_final$TXNAME <- NULL
+  combined_props_final$transcript_id <- NULL
   
   combined_props_names <-c(paste0(colnames(combined_props_final)))
   # calculate proportions per sample
   combined_props_final_df <- data.frame(lapply(combined_props_final, function(x) x / sum(x)))
   colnames(combined_props_final_df) <- combined_props_names
-  # add TXNAME back and order df
-  combined_props_final_df$TXNAME <- txids
-  combined_props_final_df <- combined_props_final_df[, c("TXNAME", combined_props_names)]
+  # add transcript_id back and order df
+  combined_props_final_df$transcript_id <- txids
+  combined_props_final_df <- combined_props_final_df[, c("transcript_id", combined_props_names)]
   
-  combined_counts_filtered <- combined_counts_filtered %>% dplyr::arrange(TXNAME)
-  combined_props_final_df <- combined_props_final_df %>% dplyr::arrange(TXNAME)
+  combined_counts_filtered <- combined_counts_filtered %>% dplyr::arrange(transcript_id)
+  combined_props_final_df <- combined_props_final_df %>% dplyr::arrange(transcript_id)
   
   # calculate total reads from df
   total_reads_remaining <- as.integer(sum(rowSums(select_if(combined_counts_filtered, is.numeric), na.rm = TRUE)))
 
   # create TPM values
   combined_TPM <- combined_props_final_df %>% mutate_if(is.numeric, ~ . * 1000000)
-  
+
+  # add gene id col
+  combined_counts_filtered <- cbind(gene_id = gene_id, combined_counts_filtered)
+  combined_props_final_df <- cbind(gene_id = gene_id, combined_props_final_df)
+  combined_TPM <- cbind(gene_id = gene_id, combined_TPM)
+
   # export files
   write.csv(combined_counts_filtered, paste0(outdir, "/", outdir, "_counts.csv"), quote = FALSE, row.names = FALSE)
   write.csv(combined_props_final_df, paste0(outdir, "/", outdir, "_proportions.csv"), quote = FALSE, row.names = FALSE)
