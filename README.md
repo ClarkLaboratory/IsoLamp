@@ -18,12 +18,12 @@
 - [Parameters](#parameters)
 - [Output](#Output)
 - [Visualisation with IsoVis](#Visualisation-with-IsoVis)
-- [Troubleshooting](#Troubleshooting)
+- [Citation](#Citation)
 
 ## Installation
 Download the pipeline with Git:
 ```
-git clone https://github.com/josiegleeson/IsoLamp.git
+git clone https://github.com/ClarkLaboratory/IsoLamp.git
 ```
 
 Make the script executable and create a conda environment with required dependencies:
@@ -61,7 +61,7 @@ IsoLamp sirv_test_data/sirv_params.ini
 This should produce a folder called 'SIRV5_test' which contains the expected output of the pipeline.
 
 ## Dependencies
-All dependencies and R libraries are automatically built in a conda environment when the setup script is executed.
+All dependencies and R libraries are automatically built in the provied conda environment file. Alternatively, the following packages are required.
 
 Packages:
   - python=3.7
@@ -110,59 +110,57 @@ ANNOTATION="path/to/annotation.gtf"
 ```
 Full parameters file (with comments):
 ```
-## Experiment Info ##
-# a folder will be created with OUTPUT_NAME and this is used as a prefix for files
+## Required
+
+## Experiment info ##
 OUTPUT_NAME=CLCN3
-# the ENSEMBL ID is used to filter reference files to increase speed
 ENSG_ID=ENSG00000109572
 
-## Paths to data ##
-# standard output for barcoded amplicon sequencing is multiple barcode/sample folers containing fastq or fasta files
-# supports .fasta or .fastq
+## Path to reads ##
 READS="path/to/sample/fa_folders"
-# path to reference genome 
+
+## Path to references ##
 GENOME="path/to/genome.fa"
-# path to reference annotation
 ANNOTATION="path/to/annotation.gtf"
 
-## Downsampling to be set to TRUE or FALSE ##
-# Downsampling results in the same number of reads for every sample, reducing inter-sample bias
-downsampling=TRUE # default is TRUE
-number_reads_downsample=8000 # default is 8000, ignored if downsampling=FALSE
+## Optional
 
-## Primer site filter to be set to TRUE or FALSE ##
+## Sample grouping ##
+# Optional, path to a CSV of sample IDs and group IDs
+grouping_data="path/to/group_ids.csv"
+
+## Minimum isoform expression thresholds ##
+TPM_minimum=5000
+samples_minimum=4 # defualt is one quarter of total number of samples
+
+## Downsampling ##
+# downsampling to the same number of reads for every sample, this reduces inter-sample bias
+downsampling=TRUE
+number_reads_downsample=10000
+
+## Primer site filter ##
 # Recommended to increase accuracy and reduce isoforms to only those amplified with primers
-primer_site_based_filter=TRUE # default is FALSE
+primer_site_based_filter=TRUE 
 # Primer coordinates for forward and reverse, as bed files
-# Only checked if primer filtering is TRUE
-forward_primers="path/to/forward.bed" # default is NULL
-reverse_primers="path/to/reverse.bed" # default is NULL
+forward_primers="path/to/forward.bed" 
+reverse_primers="path/to/reverse.bed" 
 
-## Extract high accuracy reads to be set to TRUE or FALSE ##
-extract_high_accuracy_reads=TRUE # leave blank for default, TRUE
-# minimum read accuracy
-minimum_read_accuracy=0.95 # leave blank for default, 0.95
-##
+## Read accuracy filter ##
+extract_high_accuracy_reads=TRUE
+minimum_read_accuracy=0.95
 
-## Extract high quality splice junctions to be set to TRUE or FALSE ##
-extract_high_quality_SJs=FALSE # leave blank for default, FALSE
+## Splice junction accuracy filter ##
+extract_high_quality_SJs=FALSE
 # minimum junction alignment quality
-JAQ=0.9 # leave blank for default, 0.9
+JAQ=0.9
 # window upstream and downstream of splice junction
-junction_window=15 # leave blank for default, 15
-##
+junction_window=15
 
-## Minimum read count per isoform threshold ##
-read_count_minimum=5 # default is 5, leave blank for default
-samples_minimum=3 # default is half the total number of samples (rounded down to integer), leave blank for default
+## minimap2 ##
+# minimap2 -G intron length
+max_intron_length=400
 
-# Path to a CSV of sample IDs and group IDs
-grouping_data="path/to/group_ids.csv" # leave blank for default, NULL
-
-## Other options ##
-# minimap2 -G intron length, leave blank for default
-max_intron_length=400 
-# bambu parameters, leave blank for default
+## Bambu ##
 bambu_ndr=1 
 bambu_min_gene_fraction=0.001
 ```
@@ -176,16 +174,16 @@ Detailed descriptions of parameters:
 |GENOME|required|NA|The reference genome FASTA.|
 |ANNOTATION|required|NA|The reference annotation GTF.|
 |grouping_data|optional|NULL|A CSV file of sample and group names used for plotting. The first row must be 'sample,group'. See example of this below and in 'sirv_test_data/sirv_grouping.csv'|
-|read_count_minimum|optional|5|Known and novel isoforms must meet this threshold in at least 'samples_minimum' number of samples.|
-|samples_minimum|optional|NA|Known and novel isoforms must meet the read count minimum in this many samples. Default value caclulated as number of samples/2 rounded down to nearest integer.|
+|TPM_minimum|optional|5000|Known and novel isoforms must meet this threshold in at least 'samples_minimum' number of samples.|
+|samples_minimum|optional|NA|Known and novel isoforms must meet the 'TPM_minimum' in this many samples. Default value caclulated as: number of samples/4 rounded down to nearest integer. If only 1 sample is provided, the default value will be set to 1.|
 |downsampling|optional|TRUE|Whether each sample/barcode should be downsampled to a consistent number of reads.|
-|number_reads_downsample|optional|8000|Number of reads to downsample each sample/barcode.|
-|primer_site_based_filter|optional|FALSE|Whether to remove isoforms that do not overlap the primers used to perform amplicon sequencing. We recommend using this option.|
+|number_reads_downsample|optional|10000|Number of reads to downsample each sample/barcode.|
+|primer_site_based_filter|optional|FALSE|Whether to remove isoforms that do not overlap the primers used to perform amplicon sequencing. We **highly** recommend using this option.|
 |forward_primers|optional|NULL|BED file of forward primers. Only checked if primer_site_based_filter is TRUE.|
 |reverse_primers|optional|NULL|BED file of reverse primers. Only checked if primer_site_based_filter is TRUE.|
-|extract_high_accuracy_reads|optional|TRUE|Whether to extract reads with a high accuracy and run Bambu on these reads. We recommend using this option to increase accuracy in calling novel isoforms.|
+|extract_high_accuracy_reads|optional|TRUE|Whether to extract reads with a high accuracy and run Bambu on these reads. We recommend using this option to increase accuracy in calling novel isoforms. All downsampled reads are used for final quantification.|
 |minimum_read_accuracy|optional|0.95|The minimum read accuracy, only checked if extract_high_accuracy_reads is TRUE.|
-|extract_high_quality_SJs|optional|FALSE|Whether to extract reads with high quality splice junctions, and run Bambu on these reads. This option may increase accuracy in calling novel isoforms, and if both this option and minimum_read_accuracy are set to TRUE, extract_high_quality_SJs will be prioritised. Extracting SJs significantly increases run time and memory usage.|
+|extract_high_quality_SJs|optional|FALSE|Whether to extract reads with high quality splice junctions, and run Bambu on these reads. This option may increase accuracy in calling novel isoforms. Extracting SJs significantly increases run time and memory usage.|
 |JAQ|optional|0.9|The minimum junction alignment quality every junction must meet in order for a read to be included. Only checked if extract_high_quality_SJs is TRUE.|
 |junction_window|optional|15|The nt distance upstream and downstream of splice junctions to calculate the JAQ. Only checked if extract_high_quality_SJs is TRUE.|
 |max_intron_length|optional|400|Controls the '-G' flag in minimap2 as some complex genes have long introns.|
@@ -206,7 +204,7 @@ The main output of IsoLamp includes:
   - a basic text report
   - annotation of known and novel isoforms as a GTF
   - information on novel isoforms classes from Gffcompare and Bambu
-  - quantification of known and novel isoforms (counts and propoprtions) as CSVs
+  - quantification of known and novel isoforms (counts, propoprtions, TPMs) as CSVs
   - a PCA plot of samples/barcodes
   - an accuracy plot of all input reads
   - if applicable, a CSV output of t-test results comparing isoform proportions between groups
@@ -214,9 +212,13 @@ The main output of IsoLamp includes:
 ## Visualisation with IsoVis
 The results from the IsoLamp pipeline can be visualised using IsoVis: https://isomix.org/isovis.
 
-The isoform annotation GTF (and optionally isoform counts CSV) can be directly uploaded to IsoVIs.
+The isoform annotation GTF (and optionally isoform counts CSV) can be directly uploaded to IsoVis.
 
-## Troubleshooting
+## Citation
+If you use IsoLamp, please cite the following paper.
+
+
+
 
 
 
