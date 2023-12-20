@@ -630,6 +630,11 @@ function combine_quants_function() {
 	then
 		samples_minimum=$(echo "scale=0; $num_of_barcodes/4" | bc -l) # set to the default value if empty
   	fi
+
+	if (( $samples_minimum == 0 ))
+	then
+		samples_minimum=1
+  	fi
 	
 	echo "Generating isoform counts..."
 
