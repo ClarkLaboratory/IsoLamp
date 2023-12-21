@@ -37,10 +37,10 @@ option_list = list(
 plot_pca <- function(count_data, output_prefix, grouping_variable) {
   
   # Read in the counts table from a CSV file
-  data <- read.csv(count_data, header = TRUE, row.names = 1)
+  data <- read.csv(count_data, header = TRUE, row.names = 2)
   
   #transpose the data
-  data_transposed <- t(data)
+  data_transposed <- t(data[,-1])
   
   # Perform PCA on the transposed data
   pca_result <- PCA(data_transposed, graph = FALSE)
