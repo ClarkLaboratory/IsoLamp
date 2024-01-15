@@ -282,9 +282,23 @@ function extract_mapped_genome_reads() {
 		mkdir $OUTPUT_NAME/temp_files/primers/forward
 		mkdir $OUTPUT_NAME/temp_files/primers/reverse
 
-		awk '{print > "$OUTPUT_NAME/temp_files/primers/forward/forward_" NR ".bed"}' $forward_primers
+		line_number=1
 
-		awk '{print > "$OUTPUT_NAME/temp_files/primers/reverse/reverse_" NR ".bed"}' $reverse_primers
+		while IFS= read -r line 
+		do
+			output_file="$OUTPUT_NAME/temp_files/primers/forward/forward_${line_number}.bed"
+			echo "$line" > "$output_file"
+			((line_number++))
+		done < $forward_primers
+
+		line_number=1
+
+		while IFS= read -r line 
+		do
+			output_file="$OUTPUT_NAME/temp_files/primers/reverse/reverse_${line_number}.bed"
+			echo "$line" > "$output_file"
+			((line_number++))
+		done < $reverse_primers
 
 	fi
 
