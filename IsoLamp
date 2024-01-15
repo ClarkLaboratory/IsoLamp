@@ -866,6 +866,10 @@ echo "Annotating isoforms..."
 # run with gffcompare
 gffcomp_function
 
+###### Make fasta file of transcripts #####
+echo "Generating fasta file..."
+gffread -w $OUTPUT_NAME/transcripts.fa -g $OUTPUT_NAME/temp_files/filt_chr.fa $OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf
+
 ########## Report ##########
 
 # make report txt file
