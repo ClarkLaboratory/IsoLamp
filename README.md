@@ -179,8 +179,8 @@ Detailed descriptions of parameters:
 |downsampling|optional|TRUE|Whether each sample/barcode should be downsampled to a consistent number of reads.|
 |number_reads_downsample|optional|10000|Number of reads to downsample each sample/barcode.|
 |primer_site_based_filter|optional|FALSE|Whether to remove isoforms that do not overlap the primers used to perform amplicon sequencing. We **highly** recommend using this option.|
-|forward_primers|optional|NULL|BED file of forward primers. Only checked if primer_site_based_filter is TRUE. Note: the number of lines in this file must correspond to the number of forward primers (check with wc -l file.bed)|
-|reverse_primers|optional|NULL|BED file of reverse primers. Only checked if primer_site_based_filter is TRUE. Note: the number of lines in this file must correspond to the number of reverse primers (check with wc -l file.bed)|
+|forward_primers|optional|NULL|BED file of forward primers. Only checked if primer_site_based_filter is TRUE.|
+|reverse_primers|optional|NULL|BED file of reverse primers. Only checked if primer_site_based_filter is TRUE.|
 |extract_high_accuracy_reads|optional|TRUE|Whether to extract reads with a high accuracy and run Bambu on these reads. We recommend using this option to increase accuracy in calling novel isoforms. All downsampled reads are used for final quantification.|
 |minimum_read_accuracy|optional|0.95|The minimum read accuracy, only checked if extract_high_accuracy_reads is TRUE.|
 |extract_high_quality_SJs|optional|FALSE|Whether to extract reads with high quality splice junctions, and run Bambu on these reads. This option may increase accuracy in calling novel isoforms. Extracting SJs significantly increases run time and memory usage.|
