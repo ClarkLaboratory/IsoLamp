@@ -275,13 +275,56 @@ function extract_mapped_genome_reads() {
     		primer_site_based_filter=FALSE # set to the default value if empty
   	fi
 
+	# extract primers per line
 	if [ "$primer_site_based_filter" == TRUE ]
 	then
-		bedtools intersect -split -wa -u -F 0.8 -abam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -b $forward_primers > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_forward_primers.bam
-		bedtools intersect -split -wa -u -F 0.8 -a $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_forward_primers.bam -b $reverse_primers > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_primers.bam
-	
+		mkdir $OUTPUT_NAME/temp_files/primers
+		mkdir $OUTPUT_NAME/temp_files/primers/forward
+		mkdir $OUTPUT_NAME/temp_files/primers/reverse
+
+		line_number=1
+
+		while IFS= read -r line 
+		do
+			output_file="$OUTPUT_NAME/temp_files/primers/forward/forward_${line_number}.bed"
+			echo "$line" > "$output_file"
+			((line_number++))
+		done < $forward_primers
+
+		line_number=1
+
+		while IFS= read -r line 
+		do
+			output_file="$OUTPUT_NAME/temp_files/primers/reverse/reverse_${line_number}.bed"
+			echo "$line" > "$output_file"
+			((line_number++))
+		done < $reverse_primers
+
+	fi
+
+	if [ "$primer_site_based_filter" == TRUE ]
+	then
+
+		# forward
+		forward_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/forward" | wc -l)
+		for i in $(seq 1 $forward_primer_count)
+		do
+		bedtools intersect -split -wa -u -F 0.8 -abam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -b $OUTPUT_NAME/temp_files/primers/forward/forward_${i}.bed > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_forward_primer_${i}.bam
+		done
+
+		samtools merge -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_forward_primers.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_forward_primer*.bam
+
+		# reverse
+		reverse_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/reverse" | wc -l)
+		for i in $(seq 1 $reverse_primer_count)
+		do
+		bedtools intersect -split -wa -u -F 0.8 -a $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_forward_primers.bam -b $OUTPUT_NAME/temp_files/primers/reverse/reverse_${i}.bed > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_reverse_primer_${i}.bam
+		done
+
+		samtools merge -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_reverse_primer*.bam
+
 		# get list of reads mapped to primers and genome to filter FASTQs
-		samtools view $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_primers.bam | awk '{print $1}' | sort | uniq > $OUTPUT_NAME/temp_files/reads_ids_full_length.txt
+		samtools view $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam | awk '{print $1}' | sort | uniq > $OUTPUT_NAME/temp_files/reads_ids_full_length.txt
 
 		# get reads in primer filter
 		list_for_filtering_reads=$OUTPUT_NAME/temp_files/reads_ids_full_length.txt
@@ -336,8 +379,8 @@ function get_accurate_reads() {
 		echo "Extracting high accuracy reads..."
 		if [ "$primer_site_based_filter" == TRUE ]
 		then
-			redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_primers.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
-			samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_primers.bam
+			redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
+			samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam
 		else
 			redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
 			samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
@@ -503,11 +546,24 @@ function primer_site_function() {
 		echo "Filtering based on primer BED files..."
 		
 		# intersect forward and reverse primers with GTF
-		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf | awk '{ if ($3 == "exon") print }' | bedtools intersect -wa -u -F 0.8 -a - -b $forward_primers | grep -o 'transcript_id "[^"]*' | cut -d' ' -f2 | sed 's/"//g' > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_forward_primer_exons.txt
-		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf | awk '{ if ($3 == "exon") print }' | bedtools intersect -wa -u -F 0.8 -a - -b $reverse_primers | grep -o 'transcript_id "[^"]*' | cut -d' ' -f2 | sed 's/"//g' > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons.txt
+		# forward
+		for i in $(seq 1 $forward_primer_count)
+		do
+		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf | awk '{ if ($3 == "exon") print }' | bedtools intersect -wa -u -F 0.8 -a - -b $OUTPUT_NAME/temp_files/primers/forward/forward_${i}.bed | grep -o 'transcript_id "[^"]*' | cut -d' ' -f2 | sed 's/"//g' > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_forward_primer_exons_${i}.txt
+		done
+
+		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_forward_primer_exons_*.txt > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_forward_primer_exons_all.txt
+
+		# reverse
+		for i in $(seq 1 $reverse_primer_count)
+		do
+		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf | awk '{ if ($3 == "exon") print }' | bedtools intersect -wa -u -F 0.8 -a - -b $OUTPUT_NAME/temp_files/primers/reverse/reverse_${i}.bed | grep -o 'transcript_id "[^"]*' | cut -d' ' -f2 | sed 's/"//g' > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons_${i}.txt
+		done
+
+		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons_*.txt > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons_all.txt
 		
 		# combine isoforms found in both forward and reverse primers
-		comm -12 <(sort $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_forward_primer_exons.txt) <(sort $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons.txt) > $OUTPUT_NAME/temp_files/updated_transcriptome.txt
+		comm -12 <(sort $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_forward_primer_exons_all.txt) <(sort $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons_all.txt) > $OUTPUT_NAME/temp_files/updated_transcriptome.txt
 		
 		# subset GTF that passed counts filtering with new list of isoforms that match primers
 		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf | grep -wf $OUTPUT_NAME/temp_files/updated_transcriptome.txt > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_primer.gtf
