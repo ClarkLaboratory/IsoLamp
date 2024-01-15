@@ -278,32 +278,24 @@ function extract_mapped_genome_reads() {
 	# extract primers per line
 	if [ "$primer_site_based_filter" == TRUE ]
 	then
+
 		mkdir $OUTPUT_NAME/temp_files/primers
 		mkdir $OUTPUT_NAME/temp_files/primers/forward
 		mkdir $OUTPUT_NAME/temp_files/primers/reverse
 
-		line_number=1
-
-		while IFS= read -r line 
+		# forward
+		counts_lines_forward=$(awk 'END{print NR}' $forward_primers)
+		for i in $(seq 1 $counts_lines_forward)
 		do
-			output_file="$OUTPUT_NAME/temp_files/primers/forward/forward_${line_number}.bed"
-			echo "$line" > "$output_file"
-			((line_number++))
-		done < $forward_primers
+			sed -n "${i}p" $forward_primers > $OUTPUT_NAME/temp_files/primers/forward/forward_${i}.bed
+		done
 
-		line_number=1
-
-		while IFS= read -r line 
+		# reverse
+		counts_lines_reverse=$(awk 'END{print NR}' $reverse_primers)
+		for i in $(seq 1 $counts_lines_reverse)
 		do
-			output_file="$OUTPUT_NAME/temp_files/primers/reverse/reverse_${line_number}.bed"
-			echo "$line" > "$output_file"
-			((line_number++))
-		done < $reverse_primers
-
-	fi
-
-	if [ "$primer_site_based_filter" == TRUE ]
-	then
+			sed -n "${i}p" $reverse_primers > $OUTPUT_NAME/temp_files/primers/reverse/reverse_${i}.bed
+		done
 
 		# forward
 		forward_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/forward" | wc -l)
