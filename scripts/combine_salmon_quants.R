@@ -18,6 +18,9 @@ option_list = list(
               help="output path")
 )
 
+## write code to skip folder if there is no quant.sf inside ##
+
+
 suppressWarnings({
 
   opt_parser = OptionParser(option_list=option_list)
@@ -29,12 +32,21 @@ suppressWarnings({
   outdir <- (opt$output_path)
   
   # get sample ids from within directory
-  sample_names <- c(list.files(paste0(outdir,"/updated_transcriptome/salmon_quants/")))
+  all_folders <- c(list.files(paste0(outdir,"/updated_transcriptome/salmon_quants/")))
+  # get sample ids from within directory
+  sample_files <- list.files(path = paste0(outdir,"/updated_transcriptome/salmon_quants/"), pattern = "quant.sf", recursive = TRUE, full.names = FALSE)
+  
+  if (length(sample_files) < length(all_folders)) {
+    print("WARNING: not every sample was quantified with salmon.")
+    print("If this was unexpected, check directories for missing quant.sf files: outdir/updated_transcriptome/salmon_quants")
+  }
   
   import_quants_function <- function(sample_id) {
     # get paths of file to import
-    pathtofile <- paste0(outdir,"/updated_transcriptome/salmon_quants/", sample_id, "/quant.sf")
+    pathtofile <- paste0(outdir,"/updated_transcriptome/salmon_quants/", sample_id)
+    
     df <- read.table(pathtofile, header=T)
+
     # keep only transcript_id and read counts columns
     df <- df[, c("Name", "NumReads")]
     # replace all "." characters with a "_" in case IsoVis breaks
@@ -43,21 +55,25 @@ suppressWarnings({
     colnames(df) <- c("transcript_id", paste0(sample_id))
     rownames(df) <- df[,1]
     df[,1] <- NULL
-
+    
     return(df)
   }
   
   # import all files and combine dfs
-  all_samples <- lapply(sample_names, import_quants_function)
+  all_samples <- lapply(sample_files, import_quants_function)
   
   combined_counts <- do.call("cbind", all_samples)
-
+  
+  # format column names
+  column_names <- c(colnames(combined_counts))
+  split_names <- strsplit(column_names, "/")
+  sample_names <- sapply(split_names, function(x) x[1])
+  
+  colnames(combined_counts) <- sample_names
+  
   # remove version numbers
   rownames(combined_counts) <- gsub("\\..*","", rownames(combined_counts))
 
-  # add gene id suffix
-  #rownames(combined_counts) <- paste0(rownames(combined_counts), "_", gene_id)
-  
   # get order of columns
   new_col_order <- c("transcript_id", paste0(colnames(combined_counts)))
   # convert row names to column called transcript_id
