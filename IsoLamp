@@ -297,11 +297,36 @@ function extract_mapped_genome_reads() {
 			sed -n "${i}p" $reverse_primers > $OUTPUT_NAME/temp_files/primers/reverse/reverse_${i}.bed
 		done
 
+		# get read start and end windows
+
+		cat $forward_primers $reverse_primers > $OUTPUT_NAME/temp_files/primers/combined.bed
+		lines_in_combined_bed=$(cat $OUTPUT_NAME/temp_files/primers/combined.bed | wc -l)
+
+		if [ $((counts_lines_forward + counts_lines_reverse)) -eq $lines_in_combined_bed ]
+		then
+			:
+		else
+			echo "Error in primer filtering. Hit 'Enter' key after the last line in your bed files to ensure the lines are read correctly."
+			exit 1
+		fi
+
+		reads_start=$(sort -k2 -n $OUTPUT_NAME/temp_files/primers/combined.bed | head -1 | awk '{print $2}')
+		window_start=$(($reads_start - 100))
+		
+		reads_end=$(sort -k3 -n $OUTPUT_NAME/temp_files/primers/combined.bed | tail -1 | awk '{print $3}')
+		window_end=$(($reads_end + 100))
+
+		bedtools bamtobed -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bed
+
+		awk -v a="$window_start" -v b="$window_end" '$2 > a && $3 < b' $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bed | awk '{print $4}' > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_reads_in_window.txt
+
+		samtools view -bh -N $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_reads_in_window.txt $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged_in_window.bam
+
 		# forward
 		forward_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/forward" | wc -l)
 		for i in $(seq 1 $forward_primer_count)
 		do
-		bedtools intersect -split -wa -u -F 0.8 -abam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -b $OUTPUT_NAME/temp_files/primers/forward/forward_${i}.bed > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_forward_primer_${i}.bam
+		bedtools intersect -split -wa -u -F 0.8 -abam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged_in_window.bam -b $OUTPUT_NAME/temp_files/primers/forward/forward_${i}.bed > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_forward_primer_${i}.bam
 		done
 
 		samtools merge -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_forward_primers.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_forward_primer*.bam
@@ -321,6 +346,7 @@ function extract_mapped_genome_reads() {
 		# get reads in primer filter
 		list_for_filtering_reads=$OUTPUT_NAME/temp_files/reads_ids_full_length.txt
 		number_reads_full_length=$(cat $OUTPUT_NAME/temp_files/reads_ids_full_length.txt | wc -l)
+		number_reads_inside_window=$(cat $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_reads_in_window.txt | wc -l)
 
 	else
 		# get reads mapped to genome
@@ -790,6 +816,7 @@ Total number of reads in samples/barcodes: $total_reads_input
 
 Total number of reads in samples/barcodes post-downsampling: $total_reads_post_downsample
 Number of reads mapped to genome: $number_reads_mapped
+Number of reads mapped inside primer window: $number_reads_inside_window
 Number of reads mapped to genome and overlap forward and reverse primers: $number_reads_full_length
 Number of high accuracy reads used to identify isoforms: $number_reads_acc
 Number of reads with accurate SJs used to identify isoforms: $number_reads_SJ
