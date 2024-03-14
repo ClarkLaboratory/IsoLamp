@@ -2,7 +2,7 @@
 
 [![Install](https://img.shields.io/badge/Install-Github-brightgreen)](#installation)
 [![Generic badge](https://img.shields.io/badge/Language-Bash-<COLOR>.svg)](https://shields.io/)
-[![Generic badge](https://img.shields.io/badge/Publication-10.1101/2024.02.22.24303189-<COLOR>.svg)](https://doi.org/10.1101/2024.02.22.24303189)
+[![Generic badge](https://img.shields.io/badge/Publication-10.1101/2024.02.22.24303189-<COLOR>.svg)](https://www.medrxiv.org/content/10.1101/2024.02.22.24303189v1.full-text)
 
 **IsoLamp is a bash pipeline for the identification of known and novel isoforms from targeted amplicon long-read sequencing data generated with Oxford Nanopore (ONT) sequencing.**
 
