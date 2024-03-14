@@ -185,23 +185,25 @@ function mapping_genome_function() {
   
 	echo "Mapping reads..."
 
-	# loop through each sample/barcode and map to genome with minimap2
-	for filename in "$path_to_reads"/*.fa
+    # map reads with minimap2 function
+    function map_reads_minimap2() {
+        local filename="$1"
+        base=$(basename "$filename")
+        sample_reads="${base%.*}"
+        
+        minimap2 -ax splice --eqx -G"${max_intron_length}"k --splice-flank="$splice_flank" $GENOME_FILT "$filename" | samtools view -bh > "$OUTPUT_NAME/mapped_data/${sample_reads}.bam" 
+
+        # filter for primary alignments only
+        samtools view -h -F 2308 "$OUTPUT_NAME/mapped_data/${sample_reads}.bam" | samtools sort - > "$OUTPUT_NAME/mapped_data/${sample_reads}_primary_sorted.bam"
+    }
+
+    # loop through each sample/barcode and map to genome with minimap2 in parallel
+    for filename in "$path_to_reads"/*.fa 
 	do
+        redirect_output map_reads_minimap2 "$filename" &
+    done
 
-		base=$(basename "$filename")
-		sample_reads="${base%.*}" 
-    
-		function map_reads_minimap2() {
-    			minimap2 -ax splice --eqx -G"${max_intron_length}"k --splice-flank="$splice_flank" $GENOME_FILT $path_to_reads/${sample_reads}.fa | samtools view -bh > $OUTPUT_NAME/mapped_data/${sample_reads}.bam
-		}
-
-		redirect_output map_reads_minimap2
-
-		# filter for primary alignments only
-		samtools view -h -F 2308 $OUTPUT_NAME/mapped_data/${sample_reads}.bam | samtools sort - > $OUTPUT_NAME/mapped_data/${sample_reads}_primary_sorted.bam
-
-	done
+    wait 
 
 	# merge all BAMs 
 	samtools merge -f $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam $OUTPUT_NAME/mapped_data/*sorted.bam
@@ -252,11 +254,36 @@ function extract_mapped_genome_reads() {
 			sed -n "${i}p" $reverse_primers > $OUTPUT_NAME/temp_files/primers/reverse/reverse_${i}.bed
 		done
 
+		# get read start and end windows
+
+		cat $forward_primers $reverse_primers > $OUTPUT_NAME/temp_files/primers/combined.bed
+		lines_in_combined_bed=$(cat $OUTPUT_NAME/temp_files/primers/combined.bed | wc -l)
+
+		if [ $((counts_lines_forward + counts_lines_reverse)) -eq $lines_in_combined_bed ]
+		then
+			:
+		else
+			echo "Error in primer filtering. Hit 'Enter' key after the last line in your bed files to ensure the lines are read correctly."
+			exit 1
+		fi
+
+		reads_start=$(sort -k2 -n $OUTPUT_NAME/temp_files/primers/combined.bed | head -1 | awk '{print $2}')
+		window_start=$(($reads_start - 100))
+		
+		reads_end=$(sort -k3 -n $OUTPUT_NAME/temp_files/primers/combined.bed | tail -1 | awk '{print $3}')
+		window_end=$(($reads_end + 100))
+
+		bedtools bamtobed -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bed
+
+		awk -v a="$window_start" -v b="$window_end" '$2 > a && $3 < b' $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bed | awk '{print $4}' > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_reads_in_window.txt
+
+		samtools view -bh -N $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_reads_in_window.txt $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged_in_window.bam
+
 		# forward
 		forward_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/forward" | wc -l)
 		for i in $(seq 1 $forward_primer_count)
 		do
-		bedtools intersect -split -wa -u -F 0.8 -abam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -b $OUTPUT_NAME/temp_files/primers/forward/forward_${i}.bed > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_forward_primer_${i}.bam
+		bedtools intersect -split -wa -u -F 0.8 -abam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged_in_window.bam -b $OUTPUT_NAME/temp_files/primers/forward/forward_${i}.bed > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_forward_primer_${i}.bam
 		done
 
 		samtools merge -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_forward_primers.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_overlap_forward_primer*.bam
@@ -276,6 +303,7 @@ function extract_mapped_genome_reads() {
 		# get reads in primer filter
 		list_for_filtering_reads=$OUTPUT_NAME/temp_files/reads_ids_full_length.txt
 		number_reads_full_length=$(cat $OUTPUT_NAME/temp_files/reads_ids_full_length.txt | wc -l)
+		number_reads_inside_window=$(cat $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_reads_in_window.txt | wc -l)
 
 	else
 		# get reads mapped to genome
@@ -326,10 +354,10 @@ function get_accurate_reads() {
 		echo "Extracting high accuracy reads..."
 		if [ "$primer_site_based_filter" == TRUE ]
 		then
-			redirect_output Rscript $SCRIPT_DIR/bin/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
+			redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
 			samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam
 		else
-			redirect_output Rscript $SCRIPT_DIR/bin/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
+			redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
 			samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
 		fi
 		
@@ -456,10 +484,8 @@ function run_bambu_function() {
 
 function read_count_function_first_pass() {
 	
-	read_count_minimum=2
-
 	# filter for bambu isoforms with read count > threshold 
-	cat "$OUTPUT_NAME/bambu/counts_transcript.txt" | awk -v min_count="$read_count_minimum" '{ if ($3 > min_count ) print $1 }' | tail -n +2 > "$OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt"
+	cat "$OUTPUT_NAME/bambu/counts_transcript.txt" | awk '{ if ($3 > 2 ) print $1 }' | tail -n +2 > "$OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt"
 
 	# subset bambu GTF for the isoforms that passed threshold
 	cat $OUTPUT_NAME/bambu/extended_annotations.gtf | grep -wf $OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt > $OUTPUT_NAME/bambu/extended_annotations_first_pass.gtf
@@ -725,7 +751,7 @@ function compare_proportions_test() {
 
 function generate_report_function() {
 cat << EOT >> $OUTPUT_NAME/${OUTPUT_NAME}_report.txt
-`date`
+`date "+%Y-%m-%d %H:%M:%S"`
 
 Filters applied:
 	Downsampling: $downsampling
@@ -745,6 +771,7 @@ Total number of reads in samples/barcodes: $total_reads_input
 
 Total number of reads in samples/barcodes post-downsampling: $total_reads_post_downsample
 Number of reads mapped to genome: $number_reads_mapped
+Number of reads mapped inside primer window: $number_reads_inside_window
 Number of reads mapped to genome and overlap forward and reverse primers: $number_reads_full_length
 Number of high accuracy reads used to identify isoforms: $number_reads_acc
 Number of reads with accurate SJs used to identify isoforms: $number_reads_SJ
