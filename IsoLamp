@@ -39,7 +39,6 @@ mkdir $OUTPUT_NAME/temp_files
 
 # make logs file
 log_file="$OUTPUT_NAME/IsoLamp.logs"
-
 # function to redirect output to the log file
 function redirect_output() {
     # Redirect both stdout (1) and stderr (2) to the logs file
@@ -231,7 +230,7 @@ function mapping_genome_function() {
   
 	echo "Mapping reads..."
 
-    # map reads with minimap2
+    # map reads with minimap2 function
     function map_reads_minimap2() {
         local filename="$1"
         base=$(basename "$filename")
@@ -250,25 +249,6 @@ function mapping_genome_function() {
     done
 
     wait 
-
-	# loop through each sample/barcode and map to genome with minimap2
-	#for filename in "$path_to_reads"/*.fa
-	#do
-
-	#	(base=$(basename "$filename")
-	#	sample_reads="${base%.*}" 
-    
-	#	function map_reads_minimap2() {
-    #			minimap2 -ax splice --eqx -G"${max_intron_length}"k --splice-flank="$splice_flank" $GENOME_FILT $path_to_reads/${sample_reads}.fa | samtools view -bh > $OUTPUT_NAME/mapped_data/${sample_reads}.bam 
-	#	}
-
-	#	redirect_output map_reads_minimap2 
-
-		# filter for primary alignments only
-	#	samtools view -h -F 2308 $OUTPUT_NAME/mapped_data/${sample_reads}.bam | samtools sort - > $OUTPUT_NAME/mapped_data/${sample_reads}_primary_sorted.bam 
-	#	) &
-	#done
-
 
 	# merge all BAMs 
 	samtools merge -f $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam $OUTPUT_NAME/mapped_data/*sorted.bam
@@ -548,11 +528,9 @@ function run_bambu_function() {
 }
 
 function read_count_function_first_pass() {
-
-	read_count_minimum=2
-
-	# filter for bambu isoforms with read count > threshold 
-	cat "$OUTPUT_NAME/bambu/counts_transcript.txt" | awk -v min_count="$read_count_minimum" '{ if ($3 >= min_count ) print $1 }' | tail -n +2 > "$OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt"
+	
+	# filter for bambu isoforms with read count > 2 to remove very lowly expressed isoforms
+	cat "$OUTPUT_NAME/bambu/counts_transcript.txt" | awk '{ if ($3 > 2 ) print $1 }' | tail -n +2 > "$OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt"
 	
 	# subset bambu GTF for the isoforms that passed threshold
 	cat $OUTPUT_NAME/bambu/extended_annotations.gtf | grep -wf $OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt > $OUTPUT_NAME/bambu/extended_annotations_first_pass.gtf
