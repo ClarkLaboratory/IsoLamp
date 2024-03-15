@@ -8,14 +8,28 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # ------------------------------------------------- #
 
 parameters_file=""
-mode=""
+mode="all"
+
+# Function to display help message
+function show_help() {
+  echo "IsoLamp v1.0"
+  echo "Usage: IsoLamp -p <params.ini> -m <mode>"
+  echo
+  echo "Options:"
+  echo "  -h                   Show this help message and exit"
+  echo "  -p FILE              Specify the parameters file"
+  echo "  -m CHAR              Specify the mode to run [all]"
+  echo "                           - all (runs all modules)"
+  echo "                           - isoform_discovery (runs isoform discovery modules,"
+  echo "                             requires previous mapping data)"
+  echo "Example:"
+  echo "  IsoLamp -p your_params.ini -m isoform_discovery"
+  exit 0
+}
 
 # Parse command-line options
-# Options -p and -m
-# -p params.ini
-# -m mode
-
-while getopts "p:m" opt
+# Options -p, -m, -h
+while getopts "p:m:h" opt
 do
   case $opt in
     p)
@@ -24,14 +38,19 @@ do
     m)
       mode="$OPTARG"
       ;;
-    #\?)
-      #echo "Invalid option: -$OPTARG" >&2
-      #exit 1
-      #;;
-    #:)
-      #echo "Option -$OPTARG requires an argument." >&2
-      #exit 1
-      #;;
+	h)
+	show_help
+	;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+	  echo "For help: IsoLamp -h"
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+	  echo "For help: IsoLamp -h"
+      exit 1
+      ;;
   esac
 done
 
@@ -39,33 +58,27 @@ done
 if [ -z "$parameters_file" ]
 then
   echo "Please provide parameters file."
-  echo "Usage: IsoLamp -p parameters.ini -m mode"
+  echo "Usage: IsoLamp -p <parameters.ini> -m <mode>"
   exit 1
 fi
-
-# Check if mode was provided
-#if [ -z "$mode" ]
-#then
-#  mode="default"
-#fi
 
 # Source parameters file
 source "$parameters_file"
 
 # Create logs file
-	log_file="$OUTPUT_NAME/IsoLamp.logs"
-	# function to redirect output to the log file
-	function redirect_output() {
-		# Redirect both stdout (1) and stderr (2) to the logs file
-		{
-			"$@"
-		} >> "$log_file" 2>&1
-	}
+log_file="$OUTPUT_NAME/IsoLamp.logs"
 
 # ------------------------------------------------- #
 # Define functions for each module
 # ------------------------------------------------- #
 
+# Suppress output and redirect to logs
+function redirect_output() {
+	# Redirect both stdout (1) and stderr (2) to the logs file
+	{
+		"$@"
+	} >> "$log_file" 2>&1
+}
 
 # Create directories
 function make_directories() {
@@ -79,6 +92,10 @@ function make_directories() {
 	# make directories
 	mkdir $OUTPUT_NAME
 	mkdir $OUTPUT_NAME/temp_files
+	mkdir $OUTPUT_NAME/mapped_data
+	mkdir $OUTPUT_NAME/bambu
+	mkdir $OUTPUT_NAME/updated_transcriptome
+	mkdir $OUTPUT_NAME/annotated_isoforms
 
 }
 
@@ -100,15 +117,14 @@ function mapping_module() {
 	# run minimap2
 	mapping_genome_function
 	extract_mapped_genome_reads
+	# run JWR jecker python script
+	get_accurate_reads
+	get_JWRs
 }
 
 # Isoform discovery
 function isoform_discovery_module() {
-	# run JWR jecker python script
-	get_accurate_reads
-	get_JWRs
-
-	# run bambu in R
+	set_skip_mapping_vars
 	run_bambu_function
 }
 
@@ -131,33 +147,23 @@ function quant_analysis_module() {
 
 	# some zero count isoforms result after the secound round of quants with salmon
 	read_count_function_second_pass
-
-	echo "Generating plots..."
 	plot_PCA
 	plot_accuracy 
-
 	compare_proportions_test
-
-
-	echo "Annotating isoforms..."
 	# run with gffcompare
 	gffcomp_function
-
-	echo "Generating fasta file..."
-	gffread -w $OUTPUT_NAME/transcripts.fa -g $OUTPUT_NAME/temp_files/filt_chr.fa $OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf
-
 
 	# make report txt file
 	echo "Generating report..."
 	generate_report_function
 
 	# compress reads to save space
-	gzip $OUTPUT_NAME/temp_files/reads/*
-	gzip $OUTPUT_NAME/temp_files/mapped_reads/*
+	redirect_output gzip $OUTPUT_NAME/temp_files/reads/*
+	redirect_output gzip $OUTPUT_NAME/temp_files/mapped_reads/*
 
 	if [ "$downsampling" == TRUE ]
 	then
-		gzip $OUTPUT_NAME/temp_files/downsampled_reads/*
+		redirect_output gzip $OUTPUT_NAME/temp_files/downsampled_reads/*
 	fi
 }
 
@@ -170,39 +176,19 @@ echo \
 ██ ███████  ██████  ███████ ██   ██ ██      ██ ██  
 "
 
-# version info
-echo "v1.0"
-echo "$mode"
 
-# Depending on the mode, you might execute different parts of your script
+# Depending on the mode, execute different modules
 case "$mode" in
-  default)
+  all)
   	make_directories
     preprocessing_module
 	mapping_module
 	isoform_discovery_module
 	quant_analysis_module
-	echo "Completed all modules"
-    ;;
-  preprocess_only)
-	make_directories
-    preprocessing_module
-	echo "Completed modules: preprocessing"
-    ;;
-  mapping)
-	mapping_module
-	isoform_discovery_module
-	quant_analysis_module
-	echo "Completed modules: mapping, isoform_discovery, isoform_analysis"
     ;;
   isoform_discovery)
 	isoform_discovery_module
 	quant_analysis_module
-	echo "Completed modules: isoform_discovery, isoform_analysis"
-    ;;
-  isoform_analysis)
-	quant_analysis_module
-	echo "Completed module: isoform_analysis"
     ;;
   *)
     echo "Invalid mode specified."

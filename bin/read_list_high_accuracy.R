@@ -50,7 +50,7 @@ bam_data <- bam_data %>%
 
 bam_filt <- bam_data[read_accuracy > min_acc]
 
-write.table(bam_filt$qname, paste0(output_prefix, "/temp_files/", output_prefix, "_reads_above_accuracy_minimum.txt"), col.names=F, row.names=F, quote=F, sep="\t")
+write.table(bam_filt$qname, paste0(output_prefix, "/temp_files/", "reads_above_accuracy_minimum.txt"), col.names=F, row.names=F, quote=F, sep="\t")
 
 
 

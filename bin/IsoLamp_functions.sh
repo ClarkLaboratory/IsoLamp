@@ -1,16 +1,15 @@
-
-# ------------------------------------------------- #
-# Define functions
-# ------------------------------------------------- #
-
+# main script functions
 function filter_reference_files() {
 	
-	echo "Running on reads in: $READS"
-	echo "Indexing and filtering reference files..."
-
+	echo "Preprocessing reads: $READS"
+	
+	if [ ! -d "$OUTPUT_NAME/temp_files/refs" ] 
+	then
+  		mkdir -p "$OUTPUT_NAME/temp_files/refs"
+	fi
 	# filter GTF by ensembl id
-	grep $ENSG_ID $ANNOTATION > $OUTPUT_NAME/temp_files/filt_chr.gtf
-	ANNOTATION_FILT=$OUTPUT_NAME/temp_files/filt_chr.gtf
+	grep $ENSG_ID $ANNOTATION > $OUTPUT_NAME/temp_files/refs/filt_chr.gtf
+	ANNOTATION_FILT=$OUTPUT_NAME/temp_files/refs/filt_chr.gtf
 
 	# get chr from 2nd line in filtered GTF to filter genome
 	chr=$( cat $ANNOTATION_FILT | sed -n '2p' | awk '{ print $1}' )
@@ -31,8 +30,8 @@ function filter_reference_files() {
 	fi
 
 	# filter and index genome FASTA
-	samtools faidx $GENOME $chr -o $OUTPUT_NAME/temp_files/filt_chr.fa
-	GENOME_FILT=$OUTPUT_NAME/temp_files/filt_chr.fa
+	samtools faidx $GENOME $chr -o $OUTPUT_NAME/temp_files/refs/filt_chr.fa
+	GENOME_FILT=$OUTPUT_NAME/temp_files/refs/filt_chr.fa
 
 	if [ -e "$GENOME_FILT" ]
 	then 	
@@ -108,10 +107,6 @@ function concat_files() {
 
 	# set path to reads
 	path_to_reads=$OUTPUT_NAME/temp_files/reads
-	
-	# report metrics
-	num_of_barcodes=$( ls -lh $OUTPUT_NAME/temp_files/reads/*.f* | wc -l )
-	total_reads_input=$( cat $OUTPUT_NAME/temp_files/reads/*.f* | grep "^[>@]" | wc -l )
     
 }
 
@@ -130,7 +125,7 @@ function downsampling_function() {
     			number_reads_downsample="8000" # set to the default value if empty
   		fi
 
-		echo "Downsampling reads..."
+		#echo "Downsampling reads..."
 
 		mkdir $OUTPUT_NAME/temp_files/downsampled_reads
 
@@ -163,14 +158,14 @@ function downsampling_function() {
 
 		# set path to downsampled reads
 		path_to_reads=$OUTPUT_NAME/temp_files/downsampled_reads
-		total_reads_post_downsample=$(cat $OUTPUT_NAME/temp_files/downsampled_reads/*.f* | grep "^[>@]" | sort | uniq | wc -l)
+		
 	fi
 
 }
 
 function mapping_genome_function() {
 	
-	mkdir $OUTPUT_NAME/mapped_data
+	#mkdir $OUTPUT_NAME/mapped_data
 
 	# define max intron length for minimap2
 	if [ -z "$max_intron_length" ] 
@@ -224,9 +219,6 @@ function extract_mapped_genome_reads() {
 	# get list of reads mapped to genome to filter FASTQs
 	samtools view $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam | awk '{print $1}' | sort | uniq > $OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt
 	
-	# counts total reads in a BAM file for report
-	number_reads_mapped=$(cat $OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt | wc -l)
-	
 	if [ -z "$primer_site_based_filter" ]
 	then
     		primer_site_based_filter=FALSE # set to the default value if empty
@@ -275,9 +267,9 @@ function extract_mapped_genome_reads() {
 
 		bedtools bamtobed -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bed
 
-		awk -v a="$window_start" -v b="$window_end" '$2 > a && $3 < b' $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bed | awk '{print $4}' > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_reads_in_window.txt
+		awk -v a="$window_start" -v b="$window_end" '$2 > a && $3 < b' $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bed | awk '{print $4}' > $OUTPUT_NAME/mapped_data/reads_in_window.txt
 
-		samtools view -bh -N $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_reads_in_window.txt $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged_in_window.bam
+		samtools view -bh -N $OUTPUT_NAME/mapped_data/reads_in_window.txt $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam > $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged_in_window.bam
 
 		# forward
 		forward_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/forward" | wc -l)
@@ -302,8 +294,8 @@ function extract_mapped_genome_reads() {
 
 		# get reads in primer filter
 		list_for_filtering_reads=$OUTPUT_NAME/temp_files/reads_ids_full_length.txt
-		number_reads_full_length=$(cat $OUTPUT_NAME/temp_files/reads_ids_full_length.txt | wc -l)
-		number_reads_inside_window=$(cat $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_reads_in_window.txt | wc -l)
+		
+		
 
 	else
 		# get reads mapped to genome
@@ -351,19 +343,17 @@ function get_accurate_reads() {
     			minimum_read_accuracy=0.95 # set to the default value if empty
   		fi
 
-		echo "Extracting high accuracy reads..."
+		#echo "Extracting high accuracy reads..."
 		if [ "$primer_site_based_filter" == TRUE ]
 		then
-			redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
-			samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam
+			redirect_output Rscript $SCRIPT_DIR/bin/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
+			samtools view -N $OUTPUT_NAME/temp_files/reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_merged_overlap_reverse_primers.bam
 		else
-			redirect_output Rscript $SCRIPT_DIR/scripts/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
-			samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
+			redirect_output Rscript $SCRIPT_DIR/bin/read_list_high_accuracy.R -i $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam -a $minimum_read_accuracy -o $OUTPUT_NAME
+			samtools view -N $OUTPUT_NAME/temp_files/reads_above_accuracy_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
 		fi
 		
 		samtools index $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
-
-		number_reads_acc=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_accuracy_minimum.txt | sort | uniq | wc -l)
 
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
 
@@ -410,9 +400,9 @@ function get_JWRs() {
 
 		python3 $SCRIPT_DIR/bin/NanoSplicer_JWR_checker.py --window $junction_window $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_JAQ.csv
 		Rscript $SCRIPT_DIR/bin/read_list_high_JAQ.R -i $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_JAQ.csv -j $JAQ -o $OUTPUT_NAME
-		samtools view -N $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_JAQ_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
+		samtools view -N $OUTPUT_NAME/temp_files/reads_above_JAQ_minimum.txt -o $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
 
-		number_reads_SJ=$(cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_reads_above_JAQ_minimum.txt | sort | uniq | wc -l)
+		
 
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam
 
@@ -433,7 +423,7 @@ function get_JWRs() {
 	
 	elif [ "$extract_high_quality_SJs" == TRUE ] && [ "$extract_high_accuracy_reads" == FALSE ]
 	then
-    		echo "Cannot extract high quality splice junctions if high accuracy reads are not extracted first. Set extract_high_accuracy_reads=TRUE."
+    	echo "Cannot extract high quality splice junctions if high accuracy reads are not extracted first. Set extract_high_accuracy_reads=TRUE."
 		echo "Skipping SJ extraction."
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
 	elif [ "$extract_high_quality_SJs" == FALSE ] && [ "$extract_high_accuracy_reads" == FALSE ]
@@ -443,10 +433,38 @@ function get_JWRs() {
 
 }
 
+function set_skip_mapping_vars() {
+	
+	if ! test -f $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
+	then
+		echo "No BAM file found, run mapping first."
+		exit 1
+	fi
+
+	# define
+	ANNOTATION_FILT=$OUTPUT_NAME/temp_files/refs/filt_chr.gtf
+	GENOME_FILT=$OUTPUT_NAME/temp_files/refs/filt_chr.fa
+
+	if [ "$extract_high_accuracy_reads" == TRUE ] && [ "$extract_high_quality_SJs" == TRUE ] 
+	then
+		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_JAQ_reads.bam
+	elif [ "$extract_high_accuracy_reads" == TRUE ] && [ "$extract_high_quality_SJs" == FALSE ]
+	then
+		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_filtered_high_accuracy_reads.bam
+	else
+		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
+	fi
+
+	forward_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/forward" | wc -l)
+	reverse_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/reverse" | wc -l)
+	num_of_barcodes=$( ls -lh $OUTPUT_NAME/temp_files/reads/*.f* | wc -l )
+	path_to_reads=$OUTPUT_NAME/temp_files/mapped_reads
+	
+}
+
 function run_bambu_function() {
 	
-	echo "Identifying novel isoforms with Bambu..."
-	mkdir $OUTPUT_NAME/bambu
+	echo "Identifying isoforms with Bambu..."
 
 	if [ -z "$bambu_ndr" ] 
   	then
@@ -457,6 +475,12 @@ function run_bambu_function() {
   	then
     		bambu_min_gene_fraction=0.001 # set to the default value
   	fi
+
+	if [ ! -d "$OUTPUT_NAME/bambu" ] 
+	then
+  		mkdir -p "$OUTPUT_NAME/bambu"
+	fi
+
 
 	# run bambu Rscript 
 	redirect_output Rscript $SCRIPT_DIR/bin/bambu_tx_discovery.R -b $bam_for_bambu \
@@ -484,15 +508,25 @@ function run_bambu_function() {
 
 function read_count_function_first_pass() {
 	
-	# filter for bambu isoforms with read count > threshold 
-	cat "$OUTPUT_NAME/bambu/counts_transcript.txt" | awk '{ if ($3 > 2 ) print $1 }' | tail -n +2 > "$OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt"
+	if ls $OUTPUT_NAME/temp_files/${OUTPUT_NAME}*.txt 1> /dev/null 2>&1 
+	then
+		rm $OUTPUT_NAME/temp_files/${OUTPUT_NAME}*.txt
+	fi
 
+	if ls $OUTPUT_NAME/temp_files/*.gtf 1> /dev/null 2>&1 
+	then
+		rm $OUTPUT_NAME/temp_files/*.gtf
+	fi
+
+	# filter for bambu isoforms with read count > 2 to remove very lowly expressed isoforms
+	cat "$OUTPUT_NAME/bambu/counts_transcript.txt" | awk '{ if ($3 > 2 ) print $1 }' | tail -n +2 > "$OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_read_count_min_first_pass.txt"
+	
 	# subset bambu GTF for the isoforms that passed threshold
-	cat $OUTPUT_NAME/bambu/extended_annotations.gtf | grep -wf $OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt > $OUTPUT_NAME/bambu/extended_annotations_first_pass.gtf
+	cat $OUTPUT_NAME/bambu/extended_annotations.gtf | grep -wf $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_read_count_min_first_pass.txt > $OUTPUT_NAME/bambu/extended_annotations_first_pass.gtf
 	
 	# replace some Bambu naming conventions
 	cat $OUTPUT_NAME/bambu/extended_annotations_first_pass.gtf | sed 's/tx./tx/g' | sed 's/BambuTx/tx/g' > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf
-	cat $OUTPUT_NAME/temp_files/isoforms_read_count_min_first_pass.txt | sed 's/tx./tx/g' | sed 's/BambuTx/tx/g' | awk '{ print $1"\t"$3}' > $OUTPUT_NAME/temp_files/updated_transcriptome_first_pass.txt
+	cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_read_count_min_first_pass.txt | sed 's/tx./tx/g' | sed 's/BambuTx/tx/g' | awk '{ print $1"\t"$3}' > $OUTPUT_NAME/temp_files/updated_transcriptome_first_pass.txt
 
 	# check file exists and is not empty
 	if [ -e "$OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf" ]
@@ -516,7 +550,7 @@ function primer_site_function() {
 	if [ "$primer_site_based_filter" == TRUE ]
 	then
 
-		echo "Filtering based on primer BED files..."
+		#echo "Filtering based on primer BED files..."
 		
 		# intersect forward and reverse primers with GTF
 		# forward
@@ -528,9 +562,9 @@ function primer_site_function() {
 		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_forward_primer_exons_*.txt > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_forward_primer_exons_all.txt
 
 		# reverse
-		for i in $(seq 1 $reverse_primer_count)
+		for j in $(seq 1 $reverse_primer_count)
 		do
-		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf | awk '{ if ($3 == "exon") print }' | bedtools intersect -wa -u -F 0.8 -a - -b $OUTPUT_NAME/temp_files/primers/reverse/reverse_${i}.bed | grep -o 'transcript_id "[^"]*' | cut -d' ' -f2 | sed 's/"//g' > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons_${i}.txt
+		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_first_pass.gtf | awk '{ if ($3 == "exon") print }' | bedtools intersect -wa -u -F 0.8 -a - -b $OUTPUT_NAME/temp_files/primers/reverse/reverse_${j}.bed | grep -o 'transcript_id "[^"]*' | cut -d' ' -f2 | sed 's/"//g' > ${OUTPUT_NAME}/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons_${j}.txt
 		done
 
 		cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons_*.txt > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_reverse_primer_exons_all.txt
@@ -580,8 +614,11 @@ function primer_site_function() {
 
 function create_metatranscriptome() {
 	
-	echo "Mapping to updated transcriptome with novel isoforms..."
-	mkdir $OUTPUT_NAME/updated_transcriptome
+	#echo "Mapping to updated transcriptome with novel isoforms..."
+	if [ ! -d "$OUTPUT_NAME/updated_transcriptome" ] 
+	then
+  		mkdir -p "$OUTPUT_NAME/updated_transcriptome"
+	fi
 
 	# create an updated transcriptome fasta with gffread using the bambu isoforms
 	redirect_output gffread -w $OUTPUT_NAME/updated_transcriptome/updated_transcriptome.fa -g $GENOME_FILT $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_primer.gtf
@@ -609,7 +646,10 @@ function create_metatranscriptome() {
 
 function remapping_function() {
 	
-	mkdir $OUTPUT_NAME/updated_transcriptome/salmon_quants
+	if [ ! -d "$OUTPUT_NAME/updated_transcriptome/salmon_quants" ] 
+	then
+  		mkdir -p "$OUTPUT_NAME/updated_transcriptome/salmon_quants"
+	fi
 
 	# function to loop through reads from each sample/barcode and quantify with salmon
 	running_salmon() {
@@ -665,13 +705,12 @@ function combine_quants_function() {
 		samples_minimum=1
   	fi
 	
-	echo "Generating isoform counts..."
+	echo "Generating output files..."
 
 	# run Rscript to combine quant.sf files produced by salmon to produce isoform counts
 	Rscript $SCRIPT_DIR/bin/combine_salmon_quants.R -e $ENSG_ID -m $TPM_minimum -s $samples_minimum -o $OUTPUT_NAME
 
-	# calculate number of reads in the isoform counts for report
-	reads_remaining_final=$(cat $OUTPUT_NAME/temp_files/remaining_read_sum.txt)
+	
 
 }
 
@@ -679,15 +718,16 @@ function read_count_function_second_pass() {
 
 	# create list in text file of isoforms that passed threshold
 	# command uses _ and , as sep, prints first column of tx names, removes the word Bambu in tx names, and removes the column header
-	cat $OUTPUT_NAME/${OUTPUT_NAME}_counts.csv | awk -F '[,]' '{print $2}' | sed 's/Bambu//g' | tail -n +2 > $OUTPUT_NAME/temp_files/isoforms_read_count_min_second_pass.txt
+	cat $OUTPUT_NAME/${OUTPUT_NAME}_counts.csv | awk -F '[,]' '{print $2}' | sed 's/Bambu//g' | tail -n +2 > $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_read_count_min_second_pass.txt
 	
 	# filter GTF based on isoforms 
-	cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_primer.gtf | grep -wif $OUTPUT_NAME/temp_files/isoforms_read_count_min_second_pass.txt > $OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf
+	if ls ${OUTPUT_NAME}/*.gtf 1> /dev/null 2>&1 
+	then
+		rm ${OUTPUT_NAME}/*.gtf
+	fi
+	cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_primer.gtf | grep -wif $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_read_count_min_second_pass.txt > $OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf
 
-	# report metrics
-	filtered_transcripts_known=$( cat $OUTPUT_NAME/temp_files/isoforms_read_count_min_second_pass.txt | grep -vi tx | wc -l )
-	filtered_transcripts_novel=$( cat $OUTPUT_NAME/temp_files/isoforms_read_count_min_second_pass.txt | grep -i tx | wc -l )
-
+	
 	if [ -e "$OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf" ]
 	then 	
 		if [ -s "$OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf" ]
@@ -705,17 +745,19 @@ function read_count_function_second_pass() {
 }
 
 function gffcomp_function() {
-	
-	mkdir $OUTPUT_NAME/annotated_isoforms
+	if [ ! -d "$OUTPUT_NAME/annotated_isoforms" ] 
+	then
+  		mkdir -p "$OUTPUT_NAME/annotated_isoforms"
+	fi
 
 	# create file of bambu tx classes for remaining isoforms
-	{ head -n 1 $OUTPUT_NAME/bambu/bambu_tx_classes.txt && grep -wif $OUTPUT_NAME/temp_files/isoforms_read_count_min_second_pass.txt $OUTPUT_NAME/bambu/bambu_tx_classes.txt; } > $OUTPUT_NAME/annotated_isoforms/${OUTPUT_NAME}_bambu_isoform_classes.txt
+	{ head -n 1 $OUTPUT_NAME/bambu/bambu_tx_classes.txt && grep -wif $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_read_count_min_second_pass.txt $OUTPUT_NAME/bambu/bambu_tx_classes.txt; } > $OUTPUT_NAME/annotated_isoforms/${OUTPUT_NAME}_bambu_isoform_classes.txt
 	
 	# run gffcompare on the new isoforms and original reference GTF
 	redirect_output gffcompare -r $ANNOTATION_FILT -o $OUTPUT_NAME/annotated_isoforms/gffcomp $OUTPUT_NAME/${OUTPUT_NAME}_isoforms.gtf
 	
 	# put gffcompare outputs in directory
-	mv $OUTPUT_NAME/gffcomp.* $OUTPUT_NAME/annotated_isoforms/
+	mv $OUTPUT_NAME/gffcomp.* $OUTPUT_NAME/annotated_isoforms
 
 }
 
@@ -743,13 +785,59 @@ function compare_proportions_test() {
 	then
 		:
 	else
-		echo "Comparing isoform proportions between groups..."
+		#echo "Comparing isoform proportions between groups..."
 		redirect_output Rscript $SCRIPT_DIR/bin/prop_t_test.R -i $OUTPUT_NAME/$OUTPUT_NAME"_proportions.csv" -o $OUTPUT_NAME -g $grouping_data
 	fi
 
 }
 
 function generate_report_function() {
+
+	if [ -z "$extract_high_accuracy_reads" ]
+	then
+    		extract_high_accuracy_reads=TRUE # set to the default value if empty
+			minimum_read_accuracy=0.95
+  	fi
+
+	if [ "$extract_high_accuracy_reads" == TRUE ]
+	then
+		number_reads_acc=$(cat $OUTPUT_NAME/temp_files/reads_above_accuracy_minimum.txt | sort | uniq | wc -l)
+	fi
+
+	if [ -z "$extract_high_quality_SJs" ]
+	then
+    		extract_high_quality_SJs=FALSE # set to the default value if empty
+  	fi
+
+	if [ "$extract_high_quality_SJs" == TRUE ]
+	then
+		number_reads_SJ=$(cat $OUTPUT_NAME/temp_files/reads_above_JAQ_minimum.txt | sort | uniq | wc -l)
+	fi
+
+	# report calculations
+	num_of_barcodes=$( ls -lh $OUTPUT_NAME/temp_files/reads/*.f* | wc -l )
+	
+	if ls $OUTPUT_NAME/temp_files/reads/*.gz 1> /dev/null 2>&1 
+	then
+		:
+	else
+		total_reads_input=$( cat $OUTPUT_NAME/temp_files/reads/*.f* | grep "^[>@]" | wc -l )
+	fi
+
+	if ls $OUTPUT_NAME/temp_files/downsampled_reads/*.gz 1> /dev/null 2>&1 
+	then
+		:
+	else
+		total_reads_post_downsample=$(cat $OUTPUT_NAME/temp_files/downsampled_reads/*.f* | grep "^[>@]" | sort | uniq | wc -l)
+	fi
+	
+	number_reads_mapped=$(cat $OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt | wc -l)
+	number_reads_inside_window=$(cat $OUTPUT_NAME/mapped_data/reads_in_window.txt | wc -l)
+	number_reads_full_length=$(cat $OUTPUT_NAME/temp_files/reads_ids_full_length.txt | wc -l)
+	filtered_transcripts_known=$( cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_read_count_min_second_pass.txt | grep -vi tx | wc -l )
+	filtered_transcripts_novel=$( cat $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_read_count_min_second_pass.txt | grep -i tx | wc -l )
+	reads_remaining_final=$(cat $OUTPUT_NAME/temp_files/remaining_read_sum.txt)
+
 cat << EOT >> $OUTPUT_NAME/${OUTPUT_NAME}_report.txt
 `date "+%Y-%m-%d %H:%M:%S"`
 
