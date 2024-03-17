@@ -13,7 +13,7 @@ mode="all"
 # Function to display help message
 function show_help() {
   echo "IsoLamp v1.0"
-  echo "Usage: IsoLamp -p <params.ini> -m <mode>"
+  echo "Usage: IsoLamp -p params.ini [-m mode]"
   echo
   echo "Options:"
   echo "  -h                   Show this help message and exit"
@@ -22,6 +22,8 @@ function show_help() {
   echo "                           - all (runs all modules)"
   echo "                           - isoform_discovery (runs isoform discovery modules,"
   echo "                             requires previous mapping data)"
+  echo "                           - isoform_annotation (runs isoform annotation modules,"
+  echo "                             requires previous mapping data and bambu output)"
   echo "Example:"
   echo "  IsoLamp -p your_params.ini -m isoform_discovery"
   exit 0
@@ -58,7 +60,7 @@ done
 if [ -z "$parameters_file" ]
 then
   echo "Please provide parameters file."
-  echo "Usage: IsoLamp -p <parameters.ini> -m <mode>"
+  echo "Usage: IsoLamp -p parameters.ini [-m mode]"
   exit 1
 fi
 
@@ -188,6 +190,10 @@ case "$mode" in
     ;;
   isoform_discovery)
 	isoform_discovery_module
+	quant_analysis_module
+    ;;
+  isoform_annotation)
+	set_skip_mapping_vars
 	quant_analysis_module
     ;;
   *)
