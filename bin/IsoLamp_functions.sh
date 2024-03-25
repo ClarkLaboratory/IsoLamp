@@ -195,10 +195,8 @@ function mapping_genome_function() {
     # loop through each sample/barcode and map to genome with minimap2 in parallel
     for filename in "$path_to_reads"/*.fa 
 	do
-        redirect_output map_reads_minimap2 "$filename" &
+        redirect_output map_reads_minimap2 "$filename"
     done
-
-    wait 
 
 	# merge all BAMs 
 	samtools merge -f $OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam $OUTPUT_NAME/mapped_data/*sorted.bam
