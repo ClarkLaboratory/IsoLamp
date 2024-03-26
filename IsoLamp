@@ -160,13 +160,13 @@ function quant_analysis_module() {
 	generate_report_function
 
 	# compress reads to save space
-	redirect_output gzip $OUTPUT_NAME/temp_files/reads/*
-	redirect_output gzip $OUTPUT_NAME/temp_files/mapped_reads/*
+	#redirect_output gzip $OUTPUT_NAME/temp_files/reads/*
+	#redirect_output gzip $OUTPUT_NAME/temp_files/mapped_reads/*
 
-	if [ "$downsampling" == TRUE ]
-	then
-		redirect_output gzip $OUTPUT_NAME/temp_files/downsampled_reads/*
-	fi
+	#if [ "$downsampling" == TRUE ]
+	#then
+		#redirect_output gzip $OUTPUT_NAME/temp_files/downsampled_reads/*
+	#fi
 }
 
 echo \
