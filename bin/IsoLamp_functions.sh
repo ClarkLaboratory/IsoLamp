@@ -453,8 +453,12 @@ function set_skip_mapping_vars() {
 		bam_for_bambu=$OUTPUT_NAME/mapped_data/${OUTPUT_NAME}_primary_merged.bam
 	fi
 
-	forward_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/forward" | wc -l)
-	reverse_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/reverse" | wc -l)
+ 	if [ "$primer_site_based_filter" == TRUE ]
+	then
+		forward_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/forward" | wc -l)
+		reverse_primer_count=$(ls -1 "$OUTPUT_NAME/temp_files/primers/reverse" | wc -l)
+  	fi
+   
 	num_of_barcodes=$( ls -lh $OUTPUT_NAME/temp_files/reads/*.f* | wc -l )
 	path_to_reads=$OUTPUT_NAME/temp_files/mapped_reads
 	
