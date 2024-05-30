@@ -50,7 +50,10 @@ IsoLamp -p params.ini
 # or
 IsoLamp -p params.ini -m all
 
-# isoform discovery modules only
+# for help
+IsoLamp -h
+
+# isoform discovery modules only (requires BAMs)
 IsoLamp -p params.ini -m isoform_discovery
 
 # alternatively, if not in PATH:
