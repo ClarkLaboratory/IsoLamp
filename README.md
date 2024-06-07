@@ -65,6 +65,7 @@ IsoLamp -p params.ini -m isoform_discovery
 Test the installation on the provided SIRV data:
 ```
 conda activate IsoLamp
+cd IsoLamp # run from within IsoLamp directory for test data
 IsoLamp -p sirv_test_data/sirv_params.ini
 ```
 This should produce a folder called 'SIRV5_test' which contains the expected output of the pipeline.
