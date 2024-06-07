@@ -192,7 +192,7 @@ function mapping_genome_function() {
         samtools view -h -F 2308 "$OUTPUT_NAME/mapped_data/${sample_reads}.bam" | samtools sort - > "$OUTPUT_NAME/mapped_data/${sample_reads}_primary_sorted.bam"
     }
 
-    # loop through each sample/barcode and map to genome with minimap2 in parallel
+    # loop through each sample/barcode and map to genome with minimap2
     for filename in "$path_to_reads"/*.fa 
 	do
         redirect_output map_reads_minimap2 "$filename"
