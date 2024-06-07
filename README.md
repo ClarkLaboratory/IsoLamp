@@ -45,18 +45,27 @@ Run IsoLamp (after editing the parameters file):
 ```
 conda activate IsoLamp
 
-IsoLamp parameters.ini 
+# default
+IsoLamp -p params.ini
+# or
+IsoLamp -p params.ini -m all
+
+# for help
+IsoLamp -h
+
+# isoform discovery modules only (requires BAMs)
+IsoLamp -p params.ini -m isoform_discovery
 
 # alternatively, if not in PATH:
-./IsoLamp parameters.ini # if running from same directory
-~/path/to/IsoLamp/IsoLamp parameters.ini # provide full path when running from other directories
+./IsoLamp -p parameters.ini # if running from same directory
+~/path/to/IsoLamp/IsoLamp -p parameters.ini # provide full path when running from other directories
 ```
 
 ## SIRV Test Dataset
 Test the installation on the provided SIRV data:
 ```
 conda activate IsoLamp
-IsoLamp sirv_test_data/sirv_params.ini
+IsoLamp -p sirv_test_data/sirv_params.ini
 ```
 This should produce a folder called 'SIRV5_test' which contains the expected output of the pipeline.
 

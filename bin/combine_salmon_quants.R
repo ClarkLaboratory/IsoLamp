@@ -147,7 +147,7 @@ suppressWarnings({
   write.csv(combined_TPM, paste0(outdir, "/", outdir, "_TPM_values.csv"), quote = FALSE, row.names = FALSE)
   
   
-  write.table(total_reads_remaining, paste0(outdir, "/", "temp_files/remaining_read_sum.txt"), quote = FALSE, row.names = FALSE, col.names = FALSE)
+  write.table(total_reads_remaining, paste0(outdir, "/", "temp_files/", "remaining_read_sum.txt"), quote = FALSE, row.names = FALSE, col.names = FALSE)
   
   
   
