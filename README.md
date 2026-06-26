@@ -228,7 +228,7 @@ The isoform annotation GTF (and optionally isoform counts CSV) can be directly u
 ## Citation
 If you use IsoLamp, please cite the following paper.
 
-De Paoli-Iseppi et al. (2024) Long-read sequencing reveals the RNA isoform repertoire of neuropsychiatric risk genes in human brain. medRxiv doi: https://doi.org/10.1101/2024.02.22.24303189.
+De Paoli-Iseppi et al. (2025) Long-read sequencing reveals the RNA isoform repertoire of neuropsychiatric risk genes in human brain. Genome Biol. 26:298 https://doi.org/10.1186/s13059-025-03724-1
 
 
 
