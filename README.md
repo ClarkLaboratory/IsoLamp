@@ -181,8 +181,6 @@ bambu_min_gene_fraction=0.001
 
 IsoLamp quantifies isoforms with either **oarfish** (long-read aware; default) or **salmon**.
 
-## Quantification method - options: salmon/oarfish ##
-QUANTIFIER=oarfish
 ```
 
 Detailed descriptions of parameters:
@@ -209,7 +207,6 @@ Detailed descriptions of parameters:
 |max_intron_length|optional|400|Controls the '-G' flag in minimap2 as some complex genes have long introns.|
 |bambu_ndr|optional|1|Controls the bambu 'NDR' option. We set this to 1 by default to return all possible novel isoforms and filter these downstream.|
 |bambu_min_gene_fraction|optional|0.001|Controls the bambu 'min.readFractionByGene' option.|
-|QUANTIFIER|optional|oarfish|Tool used for isoform quantification. Options: 'oarfish' (long-read aware, default) or 'salmon'. If left blank it defaults to oarfish. Can also be set at the command line with -q.|
 
 Example grouping_data file:
 ```

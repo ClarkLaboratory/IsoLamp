@@ -629,7 +629,7 @@ function create_metatranscriptome() {
 	then
   		mkdir -p "$OUTPUT_NAME/updated_transcriptome"
 	fi
-
+ 
 	# create an updated transcriptome fasta with gffread using the bambu isoforms
 	redirect_output gffread -w $OUTPUT_NAME/updated_transcriptome/updated_transcriptome.fa -g $GENOME_FILT $OUTPUT_NAME/temp_files/${OUTPUT_NAME}_isoforms_primer.gtf
 	
@@ -640,18 +640,6 @@ function create_metatranscriptome() {
 		echo "Failed to create updated transcriptome with gffread, check logs file"
 		exit 1
   	fi
-
-	# create a salmon index of the updated transcriptome
-	redirect_output salmon index -t $OUTPUT_NAME/updated_transcriptome/updated_transcriptome.fa -i $OUTPUT_NAME/updated_transcriptome -k 31
-	
-	if [ -e "$OUTPUT_NAME/updated_transcriptome/versionInfo.json" ]
-  	then 
-		:
- 	else
-		echo "Failed to index with salmon, check logs file"
-		exit 1
-  	fi
-
 }
 
 
@@ -696,81 +684,26 @@ function oarfish_function() {
 
 
 
-
-function remapping_function() {
-	
-	if [ ! -d "$OUTPUT_NAME/updated_transcriptome/salmon_quants" ] 
-	then
-  		mkdir -p "$OUTPUT_NAME/updated_transcriptome/salmon_quants"
-	fi
-
-	# function to loop through reads from each sample/barcode and quantify with salmon
-	running_salmon() {
-		for filename in $path_to_reads/*.fa
-		do
-
-			base=$(basename $filename)
-			sample_reads="${base%.*}"
-			
-			salmon quant -i $OUTPUT_NAME/updated_transcriptome \
-			-l A \
-			-r $path_to_reads/${sample_reads}.fa \
-			-o $OUTPUT_NAME/updated_transcriptome/salmon_quants/${sample_reads} \
-			-z $OUTPUT_NAME/updated_transcriptome/salmon_quants/${sample_reads}/mapped_${sample_reads}.sam \
-			--auxDir aux \
-			--writeUnmappedNames
-		
-		done
-	}
-
-	redirect_output running_salmon
-		
-	if [ -d "$OUTPUT_NAME/updated_transcriptome/salmon_quants" ]
-  	then
-		if [ "$(ls -A $OUTPUT_NAME/updated_transcriptome/salmon_quants)" ] 
-		then
-     			:
-		else
-    			echo "Failed to quantify with salmon, check logs file"
-			exit 1
-		fi
- 	else
-		echo "Failed to quantify with salmon, check logs file"
-		exit 1
-  	fi
-
-}
-
 function combine_quants_function() {
 	
 	if [ -z "$TPM_minimum" ]
 	then
     		TPM_minimum="5000" # set to the default value if empty
   	fi
-
+ 
 	if [ -z "$samples_minimum" ]
 	then
 		samples_minimum=$(echo "scale=0; $num_of_barcodes/4" | bc -l) # set to the default value if empty
   	fi
-
+ 
 	if (( $samples_minimum == 0 ))
 	then
 		samples_minimum=1
   	fi
-
-	echo "Generating output files..."
-
-	# check quantifier and call appropriate R script
-    if  [ "$QUANTIFIER" == "salmon" ]; then
-        echo "Quantifier: Salmon"
-        Rscript $SCRIPT_DIR/bin/combine_salmon_quants.R -e $ENSG_ID -m $TPM_minimum -s $samples_minimum -o $OUTPUT_NAME
-    elif [ -z "$QUANTIFIER" ] || [ "$QUANTIFIER" == "oarfish" ]; then
-        echo "Quantifier: Oarfish (default)"
-        Rscript $SCRIPT_DIR/bin/combine_oarfish_quants.R -e $ENSG_ID -m $TPM_minimum -s $samples_minimum -o $OUTPUT_NAME
-    else
-        echo "Error: Unknown quantifier '$QUANTIFIER'"
-        exit 1
-    fi
+ 
+ 
+	echo "Generating count files with oarfish..."
+	Rscript $SCRIPT_DIR/bin/combine_oarfish_quants.R -e $ENSG_ID -m $TPM_minimum -s $samples_minimum -o $OUTPUT_NAME
 }
 
 function read_count_function_second_pass() {

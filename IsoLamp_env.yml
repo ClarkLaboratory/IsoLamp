@@ -10,10 +10,9 @@ dependencies:
 - bedtools
 - bbmap                 
 - gffread
-- gffcompare
-- salmon=0.14.2  
-- oarfish=0.6.5
-- python=3.7 
+- gffcompare 
+- oarfish==0.9
+- python=3.11 
 - pip
 - pandas
 - pysam

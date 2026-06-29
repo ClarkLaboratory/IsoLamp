@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ------------------------------------------------- #
-# IsoLamp wrapper script (modified for QUANTIFIER)
+# IsoLamp wrapper script
 # ------------------------------------------------- #
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -9,35 +9,36 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 parameters_file=""
 mode="all"
-QUANTIFIER="oarfish"  # default
 
 # ------------------------------------------------- #
 # Help message
 # ------------------------------------------------- #
 function show_help() {
   echo "IsoLamp v1.0"
-  echo "Usage: IsoLamp -p params.ini [-m mode] [-q quantifier]"
+  echo "Usage: IsoLamp -p params.ini [-m mode]"
   echo
   echo "Options:"
   echo "  -h                   Show this help message and exit"
   echo "  -p FILE              Specify the parameters file"
   echo "  -m CHAR              Specify the mode to run [all]"
-  echo "  -q STRING            Specify isoform quantifier [salmon|oarfish] (default: oarfish)"
+  echo "                           - all (runs all modules)"
+  echo "                           - isoform_discovery (runs isoform discovery modules,"
+  echo "                             requires previous mapping data)"
+  echo "                           - isoform_annotation (runs isoform annotation modules,"
+  echo "                             requires previous mapping data and bambu output)"
   echo
   echo "Example:"
-  echo "  IsoLamp -p your_params.ini -m isoform_discovery -q oarfish"
+  echo "  IsoLamp -p your_params.ini -m isoform_discovery"
   exit 0
 }
-
 # ------------------------------------------------- #
 # Parse command-line options
 # ------------------------------------------------- #
-while getopts "p:m:q:h" opt
+while getopts "p:m:h" opt
 do
   case $opt in
     p) parameters_file="$OPTARG" ;;
     m) mode="$OPTARG" ;;
-    q) QUANTIFIER="$OPTARG" ;;
     h) show_help ;;
     \?) echo "Invalid option: -$OPTARG" >&2; show_help ;;
     :) echo "Option -$OPTARG requires an argument." >&2; show_help ;;
@@ -98,34 +99,14 @@ function isoform_discovery_module() {
     run_bambu_function
 }
 
-# Quantification and analysis with QUANTIFIER
+# Quantification and analysis
 function quant_analysis_module() {
     read_count_function_first_pass
     primer_site_function
-
-    # set default if not provided
-    if [ -z "$QUANTIFIER" ]; then
-        QUANTIFIER="oarfish"
-    fi
-
-    if [ "$QUANTIFIER" = "oarfish" ]; then
-        echo "Running quantification with Oarfish..."
-        create_metatranscriptome
-        oarfish_function
-        combine_quants_function
-        read_count_function_second_pass
-    elif [ "$QUANTIFIER" = "salmon" ]; then
-        echo "Running quantification with Salmon..."
-        create_metatranscriptome
-        remapping_function
-        combine_quants_function
-        read_count_function_second_pass
-    else
-        echo "Error: Unsupported QUANTIFIER value '$QUANTIFIER'. Please use 'oarfish' or 'salmon'."
-        exit 1
-    fi
-
-
+    create_metatranscriptome
+    oarfish_function
+    combine_quants_function
+    read_count_function_second_pass
     plot_PCA
     plot_accuracy
     compare_proportions_test
