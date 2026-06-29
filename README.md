@@ -86,7 +86,6 @@ Packages:
   - BBMap
   - bedtools
   - samtools
-  - salmon=0.14.2
   - gffread
   - gffcompare
   - minimap2
@@ -178,8 +177,6 @@ max_intron_length=400
 ## Bambu ##
 bambu_ndr=1 
 bambu_min_gene_fraction=0.001
-
-IsoLamp quantifies isoforms with either **oarfish** (long-read aware; default) or **salmon**.
 
 ```
 

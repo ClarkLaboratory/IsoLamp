@@ -11,7 +11,7 @@ dependencies:
 - bbmap                 
 - gffread
 - gffcompare 
-- oarfish==0.9
+- oarfish=0.9
 - python=3.11 
 - pip
 - pandas
