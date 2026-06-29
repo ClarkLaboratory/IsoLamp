@@ -78,7 +78,7 @@ This should produce a folder called 'SIRV5_test' which contains the expected out
 All dependencies and R libraries are automatically built in the provied conda environment file. Alternatively, the following packages are required.
 
 Packages:
-  - python=3.7
+  - python=3.11
   - pandas
   - pysam
   - numpy
@@ -93,7 +93,7 @@ Packages:
 
 
   R and libraries:
-  - R>=4.3
+  - R=4.3
   - Bioconductor (R package)
   - bambu>=3.2.4 (Bioconductor)
   - optparse
