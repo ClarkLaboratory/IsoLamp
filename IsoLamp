@@ -1,172 +1,138 @@
 #!/usr/bin/env bash
 
+# ------------------------------------------------- #
+# IsoLamp wrapper script (modified for QUANTIFIER)
+# ------------------------------------------------- #
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 . $SCRIPT_DIR/bin/IsoLamp_functions.sh
 
-# ------------------------------------------------- #
-# Script setup
-# ------------------------------------------------- #
-
 parameters_file=""
 mode="all"
+QUANTIFIER="oarfish"  # default
 
-# Function to display help message
+# ------------------------------------------------- #
+# Help message
+# ------------------------------------------------- #
 function show_help() {
   echo "IsoLamp v1.0"
-  echo "Usage: IsoLamp -p params.ini [-m mode]"
+  echo "Usage: IsoLamp -p params.ini [-m mode] [-q quantifier]"
   echo
   echo "Options:"
   echo "  -h                   Show this help message and exit"
   echo "  -p FILE              Specify the parameters file"
   echo "  -m CHAR              Specify the mode to run [all]"
-  echo "                           - all (runs all modules)"
-  echo "                           - isoform_discovery (runs isoform discovery modules,"
-  echo "                             requires previous mapping data)"
-  echo "                           - isoform_annotation (runs isoform annotation modules,"
-  echo "                             requires previous mapping data and bambu output)"
+  echo "  -q STRING            Specify isoform quantifier [salmon|oarfish] (default: oarfish)"
+  echo
   echo "Example:"
-  echo "  IsoLamp -p your_params.ini -m isoform_discovery"
+  echo "  IsoLamp -p your_params.ini -m isoform_discovery -q oarfish"
   exit 0
 }
 
+# ------------------------------------------------- #
 # Parse command-line options
-# Options -p, -m, -h
-while getopts "p:m:h" opt
+# ------------------------------------------------- #
+while getopts "p:m:q:h" opt
 do
   case $opt in
-    p)
-      parameters_file="$OPTARG"
-      ;;
-    m)
-      mode="$OPTARG"
-      ;;
-	h)
-	show_help
-	;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
-	  echo "For help: IsoLamp -h"
-      exit 1
-      ;;
-    :)
-      echo "Option -$OPTARG requires an argument." >&2
-	  echo "For help: IsoLamp -h"
-      exit 1
-      ;;
+    p) parameters_file="$OPTARG" ;;
+    m) mode="$OPTARG" ;;
+    q) QUANTIFIER="$OPTARG" ;;
+    h) show_help ;;
+    \?) echo "Invalid option: -$OPTARG" >&2; show_help ;;
+    :) echo "Option -$OPTARG requires an argument." >&2; show_help ;;
   esac
 done
 
-# Check if parameters file was provided
-if [ -z "$parameters_file" ]
-then
+# ------------------------------------------------- #
+# Check parameters file
+# ------------------------------------------------- #
+if [ -z "$parameters_file" ]; then
   echo "Please provide parameters file."
-  echo "Usage: IsoLamp -p parameters.ini [-m mode]"
-  exit 1
+  show_help
 fi
 
-# Source parameters file
 source "$parameters_file"
-
-# Create logs file
 log_file="$OUTPUT_NAME/IsoLamp.logs"
 
-# ------------------------------------------------- #
-# Define functions for each module
-# ------------------------------------------------- #
 
-# Suppress output and redirect to logs
+# ------------------------------------------------- #
+# Helper functions
+# ------------------------------------------------- #
 function redirect_output() {
-	# Redirect both stdout (1) and stderr (2) to the logs file
-	{
-		"$@"
-	} >> "$log_file" 2>&1
+    { "$@" ; } >> "$log_file" 2>&1
 }
 
-# Create directories
 function make_directories() {
-	# if the $OUTPUT_NAME directory already exists, exit
-	if [ -d $OUTPUT_NAME ] 
-	then
-		echo "$OUTPUT_NAME already exists"
-		exit 1
-	fi
-
-	# make directories
-	mkdir $OUTPUT_NAME
-	mkdir $OUTPUT_NAME/temp_files
-	mkdir $OUTPUT_NAME/mapped_data
-	mkdir $OUTPUT_NAME/bambu
-	mkdir $OUTPUT_NAME/updated_transcriptome
-	mkdir $OUTPUT_NAME/annotated_isoforms
-
+    if [ -d "$OUTPUT_NAME" ]; then
+        echo "$OUTPUT_NAME already exists"
+        exit 1
+    fi
+    mkdir -p "$OUTPUT_NAME" \
+             "$OUTPUT_NAME/temp_files" \
+             "$OUTPUT_NAME/mapped_data" \
+             "$OUTPUT_NAME/bambu" \
+             "$OUTPUT_NAME/updated_transcriptome" \
+             "$OUTPUT_NAME/annotated_isoforms"
 }
 
-# Preprocessing
+# ------------------------------------------------- #
+# Modules
+# ------------------------------------------------- #
 function preprocessing_module() {
-	# filter input references
-	filter_reference_files
-
-	# check filetypes
-	check_for_fastq_or_fasta_files
-	concat_files
-
-	# downsampling
-	downsampling_function
+    filter_reference_files
+    check_for_fastq_or_fasta_files
+    concat_files
+    downsampling_function
 }
 
-# Mapping
 function mapping_module() {
-	# run minimap2
-	mapping_genome_function
-	extract_mapped_genome_reads
-	# run JWR jecker python script
-	get_accurate_reads
-	get_JWRs
+    mapping_genome_function
+    extract_mapped_genome_reads
+    get_accurate_reads
+    get_JWRs
 }
 
-# Isoform discovery
 function isoform_discovery_module() {
-	set_skip_mapping_vars
-	run_bambu_function
+    set_skip_mapping_vars
+    run_bambu_function
 }
 
-# Quantification and analysis
+# Quantification and analysis with QUANTIFIER
 function quant_analysis_module() {
-	# read count filter 
-	read_count_function_first_pass
+    read_count_function_first_pass
+    primer_site_function
 
-	# primer site filter
-	primer_site_function
+    # set default if not provided
+    if [ -z "$QUANTIFIER" ]; then
+        QUANTIFIER="oarfish"
+    fi
 
-	# metatranscriptome with salmon
-	create_metatranscriptome
+    if [ "$QUANTIFIER" = "oarfish" ]; then
+        echo "Running quantification with Oarfish..."
+        create_metatranscriptome
+        oarfish_function
+        combine_quants_function
+        read_count_function_second_pass
+    elif [ "$QUANTIFIER" = "salmon" ]; then
+        echo "Running quantification with Salmon..."
+        create_metatranscriptome
+        remapping_function
+        combine_quants_function
+        read_count_function_second_pass
+    else
+        echo "Error: Unsupported QUANTIFIER value '$QUANTIFIER'. Please use 'oarfish' or 'salmon'."
+        exit 1
+    fi
 
-	# remap to salmon metatranscriptome
-	remapping_function
 
-	# Rscript to combine quant.sf files and filter by read min counts
-	combine_quants_function
+    plot_PCA
+    plot_accuracy
+    compare_proportions_test
+    gffcomp_function
 
-	# some zero count isoforms result after the secound round of quants with salmon
-	read_count_function_second_pass
-	plot_PCA
-	plot_accuracy 
-	compare_proportions_test
-	# run with gffcompare
-	gffcomp_function
-
-	# make report txt file
-	echo "Generating report..."
-	generate_report_function
-
-	# compress reads to save space
-	#redirect_output gzip $OUTPUT_NAME/temp_files/reads/*
-	#redirect_output gzip $OUTPUT_NAME/temp_files/mapped_reads/*
-
-	#if [ "$downsampling" == TRUE ]
-	#then
-		#redirect_output gzip $OUTPUT_NAME/temp_files/downsampled_reads/*
-	#fi
+    echo "Generating report..."
+    generate_report_function
 }
 
 echo \

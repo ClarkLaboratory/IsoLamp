@@ -1,46 +1,40 @@
 name: IsoLamp
+
 channels:
-  - conda-forge
-  - bioconda
-  - anaconda
-  - r
-  - defaults
+- conda-forge
+- bioconda
+
 dependencies:
-  - bbmap
-  - bedtools
-  - samtools
-  - salmon=0.14.2
-  - gffread
-  - gffcompare
-  - minimap2
-  - python=3.7
-  - pip
-  - r-base
-  - r-biocmanager
-  - r-optparse
-  - r-dplyr
-  - bioconductor-bambu
-  - r-factominer
-  - r-factoextra
-  - r-ggrepel
-  - r-rstatix
-  - r-reshape
-  - r-purrr
-  - r-ggplot2
-  - pip:
-    - pandas
-    - pysam
-    - numpy
-    - tqdm
-# SQANTI
-#  - numpy
-#  - openssl
-#  - pybedtools
-#  - pysam
-#  - scipy
-#  - cython
-#  - scikit-learn
-#  - r-ggplotify
-#  - biopython
-#  - bx-python
-#  - bcbio-gff
+- minimap2
+- samtools
+- bedtools
+- bbmap                 
+- gffread
+- gffcompare
+- salmon=0.14.2  
+- oarfish=0.6.5
+- python=3.7 
+- pip
+- pandas
+- pysam
+- numpy
+- tqdm
+
+- r-base=4.3
+- r-biocmanager
+- r-optparse
+- bioconductor-bambu=3.4
+- bioconductor-genomicalignments
+- r-dplyr
+- r-tidyr
+- r-tibble
+- r-purrr
+- r-data.table
+- r-reshape
+- r-factominer
+- r-factoextra
+- r-ggplot2
+- r-ggrepel
+- r-rstatix
+- r-viridis
+- "r-xgboost<2.1"

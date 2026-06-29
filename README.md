@@ -2,8 +2,8 @@
 
 [![Install](https://img.shields.io/badge/Install-Github-brightgreen)](#installation)
 [![Generic badge](https://img.shields.io/badge/Language-Bash-<COLOR>.svg)](https://shields.io/)
-[![Generic badge](https://img.shields.io/badge/Publication-10.1101/2024.02.22.24303189-<COLOR>.svg)](https://link.springer.com/article/10.1186/s13059-025-03724-1)
-<a href="https://doi.org/10.5281/zenodo.16533872"><img src="https://zenodo.org/badge/715874526.svg" alt="DOI"></a>
+[![Generic badge](https://img.shields.io/badge/Publication-10.1101/2024.02.22.24303189-<COLOR>.svg)](https://www.medrxiv.org/content/10.1101/2024.02.22.24303189v1.full-text)
+<a href="https://doi.org/10.5281/zenodo.16533872"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.16533872.svg" alt="DOI"></a>
 
 **IsoLamp is a bash pipeline for the identification of known and novel isoforms from targeted amplicon long-read sequencing data generated with Oxford Nanopore (ONT) sequencing.**
 
@@ -24,7 +24,7 @@
 ## Installation
 Download the pipeline with Git:
 ```
-git clone https://github.com/ClarkLaboratory/IsoLamp.git
+git clone -b oarfish https://github.com/ClarkLaboratory/IsoLamp.git
 ```
 
 Make the script executable and create a conda environment with required dependencies:
@@ -34,6 +34,9 @@ chmod +x IsoLamp
 conda env create -f IsoLamp_env.yml
 conda activate IsoLamp
 ```
+
+> **Note:** resolving the environment requires a recent conda (≥23.10, which uses the
+> libmamba solver) or mamba/micromamba. Older conda (classic solver) can take a very long
 
 ## General Command Line Usage
 We suggest adding IsoLamp to your PATH so it can be run from any directory:
@@ -87,6 +90,7 @@ Packages:
   - gffread
   - gffcompare
   - minimap2
+  - oarfish
 
 
   R and libraries:
@@ -174,6 +178,11 @@ max_intron_length=400
 ## Bambu ##
 bambu_ndr=1 
 bambu_min_gene_fraction=0.001
+
+IsoLamp quantifies isoforms with either **oarfish** (long-read aware; default) or **salmon**.
+
+## Quantification method - options: salmon/oarfish ##
+QUANTIFIER=oarfish
 ```
 
 Detailed descriptions of parameters:
@@ -200,6 +209,7 @@ Detailed descriptions of parameters:
 |max_intron_length|optional|400|Controls the '-G' flag in minimap2 as some complex genes have long introns.|
 |bambu_ndr|optional|1|Controls the bambu 'NDR' option. We set this to 1 by default to return all possible novel isoforms and filter these downstream.|
 |bambu_min_gene_fraction|optional|0.001|Controls the bambu 'min.readFractionByGene' option.|
+|QUANTIFIER|optional|oarfish|Tool used for isoform quantification. Options: 'oarfish' (long-read aware, default) or 'salmon'. If left blank it defaults to oarfish. Can also be set at the command line with -q.|
 
 Example grouping_data file:
 ```
@@ -228,7 +238,7 @@ The isoform annotation GTF (and optionally isoform counts CSV) can be directly u
 ## Citation
 If you use IsoLamp, please cite the following paper.
 
-De Paoli-Iseppi et al. (2025) Long-read sequencing reveals the RNA isoform repertoire of neuropsychiatric risk genes in human brain. Genome Biol. 26:298 https://doi.org/10.1186/s13059-025-03724-1
+De Paoli-Iseppi R, et al. (2025) Long-read sequencing reveals the RNA isoform repertoire of neuropsychiatric risk genes in human brain. Genome Biology 26:298. https://doi.org/10.1186/s13059-025-03724-1
 
 
 

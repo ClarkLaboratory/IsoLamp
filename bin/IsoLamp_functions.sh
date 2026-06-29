@@ -117,7 +117,7 @@ function downsampling_function() {
     		downsampling=TRUE # set to the default value if empty
   	fi
 
-	if [ "$downsampling" == TRUE ]
+	if [ "$downsampling" == "TRUE" ]
 	then
 		
 		if [ -z "$number_reads_downsample" ]
@@ -161,6 +161,14 @@ function downsampling_function() {
 		
 	fi
 
+	if [ "$downsampling" == "FALSE" ]
+	then
+		# set path to reads
+		echo "Skipping downsampling step"
+		path_to_reads=$OUTPUT_NAME/temp_files/reads
+	fi
+
+
 }
 
 function mapping_genome_function() {
@@ -192,7 +200,7 @@ function mapping_genome_function() {
         samtools view -h -F 2308 "$OUTPUT_NAME/mapped_data/${sample_reads}.bam" | samtools sort - > "$OUTPUT_NAME/mapped_data/${sample_reads}_primary_sorted.bam"
     }
 
-    # loop through each sample/barcode and map to genome with minimap2
+    # loop through each sample/barcode and map to genome with minimap2 in parallel
     for filename in "$path_to_reads"/*.fa 
 	do
         redirect_output map_reads_minimap2 "$filename"
@@ -646,6 +654,49 @@ function create_metatranscriptome() {
 
 }
 
+
+# Integrating oarfish function as the quantifier
+function oarfish_function() {
+    READS_DIR="$OUTPUT_NAME/temp_files/mapped_reads"   # <-- contains FASTA read files
+    OARFISH_OUT="$OUTPUT_NAME/oarfish_quants"
+    UPDATED_TRANSCRIPTOME="$OUTPUT_NAME/updated_transcriptome/updated_transcriptome.fa"
+
+    # check updated transcriptome exists
+    if [ ! -e "$UPDATED_TRANSCRIPTOME" ]; then
+        echo "Error: Updated transcriptome not found at $UPDATED_TRANSCRIPTOME"
+        exit 1
+    fi
+
+    mkdir -p "$OARFISH_OUT"
+
+    # Step 1: Map reads with minimap2 against updated transcriptome
+    for READS in "$READS_DIR"/*.fa*; do
+        SAMPLE=$(basename "$READS" | sed 's/\.[^.]*$//')   # strip extension
+        echo "Mapping $SAMPLE with minimap2..."
+        mkdir -p "$OARFISH_OUT/$SAMPLE"
+
+        # Map reads -> BAM
+        minimap2 -ax map-ont -t 12 "$UPDATED_TRANSCRIPTOME" "$READS" | \
+            samtools sort -n -o "$OARFISH_OUT/$SAMPLE/$SAMPLE.bam"
+
+        samtools index "$OARFISH_OUT/$SAMPLE/$SAMPLE.bam"
+
+        # Step 2: Run oarfish on the BAM (quiet mode + log)
+        echo "Running oarfish on $SAMPLE..."
+        oarfish -j 8 \
+            -a "$OARFISH_OUT/$SAMPLE/$SAMPLE.bam" \
+            -o "$OARFISH_OUT/$SAMPLE" \
+            --filter-group no-filters \
+            --model-coverage \
+			--quiet 
+
+        echo "Finished oarfish $SAMPLE"
+    done
+}
+
+
+
+
 function remapping_function() {
 	
 	if [ ! -d "$OUTPUT_NAME/updated_transcriptome/salmon_quants" ] 
@@ -706,14 +757,20 @@ function combine_quants_function() {
 	then
 		samples_minimum=1
   	fi
-	
+
 	echo "Generating output files..."
 
-	# run Rscript to combine quant.sf files produced by salmon to produce isoform counts
-	Rscript $SCRIPT_DIR/bin/combine_salmon_quants.R -e $ENSG_ID -m $TPM_minimum -s $samples_minimum -o $OUTPUT_NAME
-
-	
-
+	# check quantifier and call appropriate R script
+    if  [ "$QUANTIFIER" == "salmon" ]; then
+        echo "Quantifier: Salmon"
+        Rscript $SCRIPT_DIR/bin/combine_salmon_quants.R -e $ENSG_ID -m $TPM_minimum -s $samples_minimum -o $OUTPUT_NAME
+    elif [ -z "$QUANTIFIER" ] || [ "$QUANTIFIER" == "oarfish" ]; then
+        echo "Quantifier: Oarfish (default)"
+        Rscript $SCRIPT_DIR/bin/combine_oarfish_quants.R -e $ENSG_ID -m $TPM_minimum -s $samples_minimum -o $OUTPUT_NAME
+    else
+        echo "Error: Unknown quantifier '$QUANTIFIER'"
+        exit 1
+    fi
 }
 
 function read_count_function_second_pass() {
@@ -826,11 +883,11 @@ function generate_report_function() {
 		total_reads_input=$( cat $OUTPUT_NAME/temp_files/reads/*.f* | grep "^[>@]" | wc -l )
 	fi
 
-	if ls $OUTPUT_NAME/temp_files/downsampled_reads/*.gz 1> /dev/null 2>&1 
+	if ls "$path_to_reads"/*.gz 1> /dev/null 2>&1 
 	then
-		:
+    	:
 	else
-		total_reads_post_downsample=$(cat $OUTPUT_NAME/temp_files/downsampled_reads/*.f* | grep "^[>@]" | sort | uniq | wc -l)
+    	total_reads_post_downsample=$(cat "$path_to_reads"/*.f* | grep "^[>@]" | sort | uniq | wc -l)
 	fi
 	
 	number_reads_mapped=$(cat $OUTPUT_NAME/temp_files/reads_ids_mapped_to_genome.txt | wc -l)
