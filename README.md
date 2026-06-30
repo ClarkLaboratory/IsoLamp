@@ -95,7 +95,7 @@ Packages:
   R and libraries:
   - R=4.3
   - Bioconductor (R package)
-  - bambu>=3.2.4 (Bioconductor)
+  - bambu=3.4 (Bioconductor)
   - optparse
   - dplyr
   - factominer
